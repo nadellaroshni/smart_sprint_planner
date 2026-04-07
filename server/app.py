@@ -23,7 +23,9 @@ from env.models import (
     ResetRequest,
     StepRequest,
     StepResult,
+    TaskDescriptor,
 )
+from env.task_catalog import get_task_catalog, resolve_task_name
 from planner import generate_plan
 
 logger = logging.getLogger(__name__)
@@ -60,13 +62,19 @@ def health():
     return {"status": "ok", "env_ready": env is not None}
 
 
+@app.get("/tasks", response_model=list[TaskDescriptor])
+def list_tasks():
+    return get_task_catalog()
+
+
 @app.post("/reset", response_model=Observation)
 def reset(request: ResetRequest = ResetRequest()):
     global env
     if env is None:
         raise HTTPException(500, "Environment not initialised")
+    requested_difficulty = resolve_task_name(request.task) or request.difficulty
     return env.reset(
-        difficulty=request.difficulty,
+        difficulty=requested_difficulty,
         audio_path=request.audio_path,
         transcript_override=request.transcript_override,
     )

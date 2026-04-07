@@ -155,6 +155,7 @@ class StepResult(BaseModel):
 
 class ResetRequest(BaseModel):
     difficulty: Difficulty = Difficulty.MEDIUM
+    task: Optional[str] = None
     audio_path: Optional[str] = None
     transcript_override: Optional[str] = None
 
@@ -201,3 +202,13 @@ class PlanResponse(BaseModel):
     breakdown: Dict[str, float]
     summary: str
     final_board: str
+
+
+class TaskDescriptor(BaseModel):
+    id: str
+    name: str
+    difficulty: Difficulty
+    objective: str
+    grader: str
+    score_range: str = "[0.0, 1.0]"
+    deterministic: bool = True

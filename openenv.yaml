@@ -7,9 +7,27 @@ version: "1.0.0"
 entrypoint: env.environment:SprintEnv
 
 tasks:
-  - easy
-  - medium
-  - hard
+  - id: easy
+    name: easy
+    difficulty: easy
+    objective: Create the best sprint plan from a static backlog with fixed capacity and deadlines.
+    grader: env.graders.grade
+    score_range: [0.0, 1.0]
+    deterministic: true
+  - id: medium
+    name: medium
+    difficulty: medium
+    objective: Revise the sprint plan once after a single mid-sprint disruption.
+    grader: env.graders.grade
+    score_range: [0.0, 1.0]
+    deterministic: true
+  - id: hard
+    name: hard
+    difficulty: hard
+    objective: Re-plan repeatedly under multiple disruptions while preserving feasibility and value.
+    grader: env.graders.grade
+    score_range: [0.0, 1.0]
+    deterministic: true
 
 environment:
   max_steps: 20
@@ -37,6 +55,7 @@ dependencies:
 server:
   host: 0.0.0.0
   port: 7860
+  endpoint_tasks: /tasks
   endpoint_reset: /reset
   endpoint_step: /step
   endpoint_state: /state
