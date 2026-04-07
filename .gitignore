@@ -1,0 +1,29 @@
+.env
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env.bak/
+whisper_env/
+
+# Local caches and generated artifacts
+.cache/
+logs/
+checkpoints/
+
+# IDE and editor settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

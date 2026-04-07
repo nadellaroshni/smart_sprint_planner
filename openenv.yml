@@ -1,0 +1,41 @@
+name: smart_sprint_env
+description: >
+  End-to-end Agile sprint planner RL environment.
+  Pipeline: Meeting Audio → Whisper Transcription → LLM Action Extraction
+  → JIRA Ticket Generation → RL Sprint Planning → Dense Reward Signal.
+version: "1.0.0"
+entrypoint: env.environment:SprintEnv
+
+tasks:
+  - easy
+  - medium
+  - hard
+
+environment:
+  max_steps: 20
+  reward: dense
+  observation_space: structured
+  action_space: discrete_assignment
+
+grading:
+  completion_rate: 0.30
+  on_time_delivery: 0.25
+  extraction_quality: 0.20
+  workload_balance: 0.15
+  efficiency: 0.10
+
+dependencies:
+  - fastapi
+  - uvicorn
+  - pydantic
+  - numpy
+  - openai
+  - openai-whisper
+  - tenacity
+
+server:
+  host: 0.0.0.0
+  port: 7860
+  endpoint_reset: /reset
+  endpoint_step: /step
+  endpoint_grade: /grade
