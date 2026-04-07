@@ -1,0 +1,22 @@
+version = 1
+revision = 1
+requires-python = ">=3.10"
+
+[[package]]
+name = "smart-sprint-planner"
+version = "1.0.0"
+source = { editable = "." }
+dependencies = [
+  { name = "fastapi" },
+  { name = "uvicorn" },
+  { name = "pydantic" },
+  { name = "numpy" },
+  { name = "openai" },
+  { name = "openenv-core" },
+  { name = "torch" },
+  { name = "torchaudio" },
+  { name = "python-multipart" },
+  { name = "httpx" },
+  { name = "tenacity" },
+  { name = "rich" },
+]

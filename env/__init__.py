@@ -1,7 +1,7 @@
 from .environment import SprintEnv
 from .models import (
     Observation, Action, Task, Developer,
-    ExtractedItem, Priority, TaskStatus, Difficulty
+    ExtractedItem, Priority, TaskStatus, Difficulty, EventType, SprintEvent
 )
 
 __all__ = [
@@ -14,4 +14,6 @@ __all__ = [
     "Priority",
     "TaskStatus",
     "Difficulty",
+    "EventType",
+    "SprintEvent",
 ]

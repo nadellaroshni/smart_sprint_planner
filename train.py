@@ -51,21 +51,31 @@ LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 # ── Curriculum schedule ──────────────────────────────────────────────────────
 #  (start_episode, difficulty)
-CURRICULUM = [
-    (0,   Difficulty.EASY),
-    (100, Difficulty.MEDIUM),
-    (250, Difficulty.HARD),
-]
+CURRICULUM_LIMITS = {
+    Difficulty.EASY: {"graduate_after": 60, "threshold": 0.68},
+    Difficulty.MEDIUM: {"graduate_after": 180, "threshold": 0.64},
+}
 
 
-def get_difficulty(episode: int, fixed: Optional[Difficulty] = None) -> Difficulty:
+def get_difficulty(
+    episode: int,
+    fixed: Optional[Difficulty] = None,
+    rolling_score: Optional[float] = None,
+) -> Difficulty:
     if fixed is not None:
         return fixed
-    diff = CURRICULUM[0][1]
-    for ep, d in CURRICULUM:
-        if episode >= ep:
-            diff = d
-    return diff
+
+    if episode <= CURRICULUM_LIMITS[Difficulty.EASY]["graduate_after"]:
+        if rolling_score is not None and episode >= 30 and rolling_score >= CURRICULUM_LIMITS[Difficulty.EASY]["threshold"]:
+            return Difficulty.MEDIUM
+        return Difficulty.EASY
+
+    if episode <= CURRICULUM_LIMITS[Difficulty.MEDIUM]["graduate_after"]:
+        if rolling_score is not None and episode >= 120 and rolling_score >= CURRICULUM_LIMITS[Difficulty.MEDIUM]["threshold"]:
+            return Difficulty.HARD
+        return Difficulty.MEDIUM
+
+    return Difficulty.HARD
 
 
 # ── Episode runner ────────────────────────────────────────────────────────────
@@ -143,7 +153,7 @@ def train(
     eval_every: int           = 25,
     save_every: int           = 50,
 ):
-    env   = SprintEnv(max_steps=20, use_llm=False)
+    env   = SprintEnv(max_steps=20, use_llm=False, sample_scenarios=True, seed=42)
     agent = DDQNAgent(
         lr             = 1e-3,
         gamma          = 0.95,
@@ -181,7 +191,8 @@ def train(
         if _stop[0]:
             break
 
-        difficulty = get_difficulty(ep, fixed_difficulty)
+        rolling_score = float(np.mean(score_window)) if score_window else None
+        difficulty = get_difficulty(ep, fixed_difficulty, rolling_score=rolling_score)
         result     = run_episode(env, agent, difficulty, render=render, train=True)
         agent.episode = ep
 

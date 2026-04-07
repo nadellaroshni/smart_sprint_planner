@@ -1,228 +1,262 @@
 """
-Inference script — Heuristic Sprint Planning Agent.
+Competition-compliant baseline inference runner.
 
-Agent strategy:
-  1. Prioritise by: deadline urgency > task priority > story points
-  2. Assign to developer with best skill match + highest capacity
-  3. Respect dependency ordering (blocked tasks skipped)
+Stdout contract:
+  [START] task=<task_name> env=<benchmark> model=<model_name>
+  [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
+  [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
 
-Logging follows the exact openenv format required by the hackathon.
+Notes:
+  - Uses OpenAI client for LLM planning when credentials are configured.
+  - Falls back to a deterministic heuristic when no API key is available.
+  - Prints only the mandated log lines to stdout. Optional render/debug goes to stderr.
 """
 
 from __future__ import annotations
 
 import json
-import logging
 import os
 import sys
-import time
-from datetime import datetime
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
+
+from openai import OpenAI
 
 from env.environment import SprintEnv
-from env.models import Action, Difficulty, Observation
 from env.graders import grade
+from env.models import Action, Difficulty, Observation
 
-# ---------------------------------------------------------------------------
-# Logging setup
-# ---------------------------------------------------------------------------
+ENV_NAME = "smart_sprint_env"
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger("inference")
+_client: OpenAI | str | None = None
 
 
-# ---------------------------------------------------------------------------
-# Heuristic agent
-# ---------------------------------------------------------------------------
+def _get_client() -> OpenAI | str:
+    global _client
+    if _client is None:
+        if not API_KEY:
+            _client = "unavailable"
+        else:
+            _client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    return _client
+
 
 def _priority_score(task: dict, current_day: int) -> float:
-    """
-    Combined urgency score (higher = assign first).
-    Accounts for:
-      - deadline proximity (days remaining)
-      - task priority level
-      - story points (prefer smaller tasks to clear backlog faster)
-    """
     days_remaining = max(task["deadline"] - current_day, 0)
-    urgency = 10.0 / (days_remaining + 1)          # higher when deadline is close
+    urgency = 10.0 / (days_remaining + 1)
     priority_weight = task["priority"] * 1.5
-    size_penalty = 1.0 / task["story_points"]       # prefer smaller tasks
-
-    return urgency + priority_weight + size_penalty
+    size_penalty = 1.0 / max(task["story_points"], 1)
+    event_bonus = 2.0 if task.get("source_event") else 0.0
+    return urgency + priority_weight + size_penalty + event_bonus
 
 
 def _developer_score(dev: dict, task: dict) -> float:
-    """Score a developer-task pair. Higher = better fit."""
     if dev["capacity"] < task["story_points"]:
-        return -999.0  # cannot assign
-
+        return -999.0
     skill_bonus = 2.0 if set(dev.get("specializations", [])) & set(task.get("tags", [])) else 0.0
     capacity_score = dev["capacity"] * dev["skill"]
     return capacity_score + skill_bonus
 
 
-def choose_action(obs: Observation) -> Optional[Tuple[str, str]]:
-    """
-    Pick the best (task_id, developer_id) action given current observation.
-
-    Returns None if no valid assignment exists.
-    """
-    completed_ids = set()  # We don't track this in obs directly but env handles it
+def choose_action_heuristic(obs: Observation) -> Optional[Tuple[str, str]]:
+    completed_ids = set(obs.completed_task_ids)
     tickets = obs.jira_tickets
     developers = obs.developers
 
     if not tickets or not developers:
         return None
 
-    # Exclude blocked tasks (dependencies not met)
-    # We rely on env to reject blocked assignments; still try to avoid them
-    # by sorting. Tickets with no dependencies go first.
     candidates = sorted(
         tickets,
         key=lambda t: (
-            len(t.dependencies),                         # fewer deps first
+            0 if t.model_dump().get("source_event") else 1,
+            len(t.dependencies),
             -_priority_score(t.model_dump(), obs.sprint_day),
-        )
+        ),
     )
 
     for task in candidates:
-        # Sort devs by fit score for this task
+        if any(dep not in completed_ids for dep in task.dependencies):
+            continue
+
         ranked_devs = sorted(
             developers,
             key=lambda d: _developer_score(d.model_dump(), task.model_dump()),
             reverse=True,
         )
         best_dev = ranked_devs[0]
-
         if best_dev.capacity >= task.story_points:
             return task.id, best_dev.id
 
-    return None  # all tasks blocked or no capacity
+    return None
 
 
-# ---------------------------------------------------------------------------
-# Logging helpers (strict openenv format)
-# ---------------------------------------------------------------------------
+def choose_action_llm(obs: Observation) -> Optional[Tuple[str, str]]:
+    client = _get_client()
+    if client == "unavailable":
+        return None
 
-def log_start(env: SprintEnv, difficulty: str, episode: int = 1) -> None:
-    entry = {
-        "event": "episode_start",
-        "timestamp": datetime.utcnow().isoformat(),
-        "episode": episode,
-        "difficulty": difficulty,
-        "num_tickets": len(env.state()["tickets"]),
-        "num_developers": len(env.state()["developers"]),
-        "max_steps": env.max_steps,
+    completed_ids = set(obs.completed_task_ids)
+    candidate_actions = []
+    for task in obs.jira_tickets:
+        if any(dep not in completed_ids for dep in task.dependencies):
+            continue
+        for dev in obs.developers:
+            if dev.capacity >= task.story_points:
+                candidate_actions.append(
+                    {
+                        "task_id": task.id,
+                        "developer_id": dev.id,
+                        "task_title": task.title,
+                        "story_points": task.story_points,
+                        "priority": int(task.priority),
+                        "deadline": task.deadline,
+                        "tags": task.tags,
+                        "developer_capacity": dev.capacity,
+                        "developer_skill": dev.skill,
+                        "developer_specializations": dev.specializations,
+                    }
+                )
+
+    if not candidate_actions:
+        return None
+
+    payload = {
+        "difficulty": obs.difficulty.value,
+        "sprint_day": obs.sprint_day,
+        "recent_events": [event.model_dump(mode="json") for event in obs.recent_events],
+        "candidate_actions": candidate_actions[:40],
+        "instructions": [
+            "Choose the single best action for sprint planning.",
+            "Prioritize urgent and high-value work.",
+            "Absorb disruption-created work quickly.",
+            "Respect developer capacity and specialization fit.",
+            "Return strict JSON with keys task_id and developer_id.",
+        ],
     }
-    print(json.dumps(entry))
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are choosing one sprint assignment action. "
+                        "Return only JSON: {\"task_id\":\"...\",\"developer_id\":\"...\"}."
+                    ),
+                },
+                {"role": "user", "content": json.dumps(payload)},
+            ],
+        )
+        raw = response.choices[0].message.content.strip()
+        data = json.loads(raw)
+        task_id = data.get("task_id")
+        developer_id = data.get("developer_id")
+        if not isinstance(task_id, str) or not isinstance(developer_id, str):
+            return None
+        valid_pairs = {(a["task_id"], a["developer_id"]) for a in candidate_actions}
+        return (task_id, developer_id) if (task_id, developer_id) in valid_pairs else None
+    except Exception:
+        return None
 
 
-def log_step(step: int, action: Action, obs: Observation, reward: float, done: bool, info: dict) -> None:
-    entry = {
-        "event": "step",
-        "step": step,
-        "action": {"task_id": action.task_id, "developer_id": action.developer_id},
-        "reward": round(reward, 4),
-        "done": done,
-        "backlog_remaining": obs.backlog_count,
-        "info": info,
-    }
-    print(json.dumps(entry))
+def choose_action(obs: Observation) -> tuple[Optional[Tuple[str, str]], str]:
+    llm_choice = choose_action_llm(obs)
+    if llm_choice is not None:
+        return llm_choice, f"assign(task_id='{llm_choice[0]}',developer_id='{llm_choice[1]}',source='llm')"
+
+    heuristic_choice = choose_action_heuristic(obs)
+    if heuristic_choice is not None:
+        return heuristic_choice, f"assign(task_id='{heuristic_choice[0]}',developer_id='{heuristic_choice[1]}',source='heuristic')"
+
+    return None, "noop()"
 
 
-def log_end(grade_result: dict, total_steps: int, elapsed_s: float) -> None:
-    entry = {
-        "event": "episode_end",
-        "timestamp": datetime.utcnow().isoformat(),
-        "total_steps": total_steps,
-        "elapsed_seconds": round(elapsed_s, 2),
-        **grade_result,
-    }
-    print(json.dumps(entry))
+def _bool(value: bool) -> str:
+    return "true" if value else "false"
 
 
-# ---------------------------------------------------------------------------
-# Main runner
-# ---------------------------------------------------------------------------
+def _format_error(info: dict) -> str:
+    error = info.get("error")
+    if error is None:
+        return "null"
+    return str(error).replace("\n", " ").strip() or "null"
 
-def run_episode(
-    difficulty: Difficulty = Difficulty.MEDIUM,
-    render: bool = True,
-    episode: int = 1,
-) -> dict:
+
+def log_start(task_name: str) -> None:
+    print(f"[START] task={task_name} env={ENV_NAME} model={MODEL_NAME}")
+
+
+def log_step(step: int, action_str: str, reward: float, done: bool, info: dict) -> None:
+    print(
+        f"[STEP] step={step} action={action_str} reward={reward:.2f} "
+        f"done={_bool(done)} error={_format_error(info)}"
+    )
+
+
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    reward_str = ",".join(f"{reward:.2f}" for reward in rewards)
+    print(f"[END] success={_bool(success)} steps={steps} score={score:.2f} rewards={reward_str}")
+
+
+def run_episode(difficulty: Difficulty = Difficulty.MEDIUM, render: bool = False) -> dict:
     env = SprintEnv(difficulty=difficulty, max_steps=20, use_llm=False)
     obs = env.reset()
-
-    start_time = time.time()
-    log_start(env, difficulty.value, episode)
-
-    if render:
-        print(env.render())
-
-    cumulative_reward = 0.0
+    rewards: List[float] = []
     done = False
 
+    log_start(difficulty.value)
+
+    if render:
+        print(env.render(), file=sys.stderr)
+
     while not done:
-        result = choose_action(obs)
+        choice, action_str = choose_action(obs)
+        if choice is None:
+            action = Action(task_id="INVALID_TASK", developer_id="INVALID_DEV")
+            obs, reward, done, info = env.step(action)
+            rewards.append(reward)
+            log_step(env.current_step, action_str, reward, done, info)
+            continue
 
-        if result is None:
-            logger.warning("No valid action found — ending episode early.")
-            break
-
-        task_id, dev_id = result
-        action = Action(task_id=task_id, developer_id=dev_id)
-
+        action = Action(task_id=choice[0], developer_id=choice[1])
         obs, reward, done, info = env.step(action)
-        cumulative_reward += reward
-
-        log_step(env.current_step, action, obs, reward, done, info)
+        rewards.append(reward)
+        log_step(env.current_step, action_str, reward, done, info)
 
         if render:
-            print(env.render())
+            print(env.render(), file=sys.stderr)
 
-    grade_result = grade(env)
-    elapsed = time.time() - start_time
-    log_end(grade_result, env.current_step, elapsed)
-
-    logger.info(
-        f"Episode {episode} | difficulty={difficulty.value} | "
-        f"reward={cumulative_reward:.3f} | score={grade_result['score']:.3f} | "
-        f"steps={env.current_step} | elapsed={elapsed:.1f}s"
-    )
-    return grade_result
+    result = grade(env)
+    success = result["score"] > 0.0
+    log_end(success, env.current_step, result["score"], rewards)
+    return result
 
 
-def run_all_difficulties(render: bool = False) -> None:
-    """Run one episode per difficulty level and print a summary table."""
+def run_all_difficulties(render: bool = False) -> dict:
     results = {}
-    for i, diff in enumerate(Difficulty, start=1):
-        logger.info(f"\n{'─' * 50}\nRunning difficulty: {diff.value}\n{'─' * 50}")
-        results[diff.value] = run_episode(difficulty=diff, render=render, episode=i)
-
-    print("\n" + "=" * 50)
-    print("  FINAL RESULTS ACROSS DIFFICULTIES")
-    print("=" * 50)
-    for diff, r in results.items():
-        print(f"  {diff:8s}  score={r['score']:.3f}  {r['summary']}")
-    print("=" * 50)
+    for difficulty in Difficulty:
+        results[difficulty.value] = run_episode(difficulty=difficulty, render=render)
+    return results
 
 
 if __name__ == "__main__":
-    difficulty_arg = sys.argv[1] if len(sys.argv) > 1 else "medium"
+    difficulty_arg = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "medium"
     render_arg = "--render" in sys.argv
     all_arg = "--all" in sys.argv
+
+    diff_map = {
+        "easy": Difficulty.EASY,
+        "medium": Difficulty.MEDIUM,
+        "hard": Difficulty.HARD,
+    }
 
     if all_arg:
         run_all_difficulties(render=render_arg)
     else:
-        diff_map = {
-            "easy": Difficulty.EASY,
-            "medium": Difficulty.MEDIUM,
-            "hard": Difficulty.HARD,
-        }
-        chosen = diff_map.get(difficulty_arg.lower(), Difficulty.MEDIUM)
-        run_episode(difficulty=chosen, render=render_arg)
+        run_episode(difficulty=diff_map.get(difficulty_arg.lower(), Difficulty.MEDIUM), render=render_arg)

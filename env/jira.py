@@ -1,66 +1,35 @@
 """
-JIRA Ticket Generator.
+JIRA ticket generator.
 
-Converts raw ExtractedItems into enriched Task objects with:
-- Fibonacci story point estimation (1,2,3,5,8,13)
-- Skill/tag inference
-- Dependency detection (keyword-based)
-- Acceptance criteria generation
+Converts extracted meeting items into enriched task objects with:
+  - story point estimation
+  - tag expansion
+  - dependency inference
+  - richer acceptance and context descriptions
 """
 
 from __future__ import annotations
 
-import re
 import logging
+import re
 from typing import List, Tuple
 
-from .models import ExtractedItem, Task, Priority, TaskStatus
+from .models import ExtractedItem, Priority, Task, TaskStatus
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Story point estimation table
-# ---------------------------------------------------------------------------
-
-# (regex pattern, story points)
 _SP_RULES: List[Tuple[str, int]] = [
-    # Quick fixes
     (r"\b(typo|style|css|colour|color|avatar|icon|tooltip)\b", 1),
-    # Small bugs
     (r"\b(bug|fix|hotfix|patch|minor)\b", 2),
-    # Standard tasks
-    (r"\b(unit test|write test|test coverage)\b", 2),
+    (r"\b(unit test|write test|test coverage|regression)\b", 2),
     (r"\b(ci.?cd|pipeline|github action|workflow)\b", 3),
-    # Medium features
     (r"\b(dashboard|chart|analytics|ui|page|form|component)\b", 3),
     (r"\b(api|endpoint|route|controller)\b", 3),
-    # Complex features
     (r"\b(oauth|sso|authentication|login|auth)\b", 5),
     (r"\b(feature|module|service|integration)\b", 5),
-    # Heavy work
     (r"\b(migrate|migration|refactor|database|postgres|mongo)\b", 8),
     (r"\b(architecture|redesign|overhaul|system)\b", 13),
 ]
-
-# ---------------------------------------------------------------------------
-# Tag → skill/specialization mapping
-# ---------------------------------------------------------------------------
-
-_TAG_SKILLS = {
-    "bug": ["debugging"],
-    "auth": ["backend", "security"],
-    "payments": ["backend", "payments"],
-    "frontend": ["frontend"],
-    "backend": ["backend"],
-    "infra": ["devops", "infra"],
-    "testing": ["testing", "qa"],
-    "database": ["backend", "database"],
-    "analytics": ["frontend", "data"],
-}
-
-# ---------------------------------------------------------------------------
-# Dependency inference (keyword proximity)
-# ---------------------------------------------------------------------------
 
 _BLOCKER_PAIRS = [
     ("login", "dashboard"),
@@ -72,10 +41,6 @@ _BLOCKER_PAIRS = [
 
 
 def estimate_story_points(text: str) -> int:
-    """
-    Fibonacci story point estimation using keyword rules.
-    Falls back to 3 (median) if no rule matches.
-    """
     lower = text.lower()
     for pattern, points in _SP_RULES:
         if re.search(pattern, lower):
@@ -84,74 +49,90 @@ def estimate_story_points(text: str) -> int:
 
 
 def infer_tags(item: ExtractedItem) -> List[str]:
-    """Merge existing tags with additional inferred tags from text."""
     combined = set(item.tags)
-    lower = (item.task + " " + item.raw_text).lower()
-    for keyword in ["bug", "auth", "payments", "frontend", "backend",
-                    "infra", "testing", "database", "analytics", "ci", "deploy"]:
+    lower = f"{item.task} {item.description} {item.raw_text}".lower()
+    for keyword in [
+        "bug",
+        "auth",
+        "payments",
+        "frontend",
+        "backend",
+        "infra",
+        "testing",
+        "database",
+        "analytics",
+        "ci",
+        "deploy",
+        "security",
+        "documentation",
+        "performance",
+    ]:
         if keyword in lower:
             combined.add(keyword)
-    return list(combined)
+    return sorted(combined)
 
 
 def _infer_dependencies(tickets: List[Task]) -> None:
-    """
-    Mutate tickets in-place to add dependency edges.
-    Uses heuristic blocker pairs.
-    """
-    id_map = {t.id: t for t in tickets}
-
     for blocker_kw, dependent_kw in _BLOCKER_PAIRS:
         blockers = [
-            t for t in tickets
-            if blocker_kw in t.title.lower() or blocker_kw in " ".join(t.tags)
+            t for t in tickets if blocker_kw in t.title.lower() or blocker_kw in " ".join(t.tags)
         ]
         dependents = [
-            t for t in tickets
-            if dependent_kw in t.title.lower() or dependent_kw in " ".join(t.tags)
+            t for t in tickets if dependent_kw in t.title.lower() or dependent_kw in " ".join(t.tags)
         ]
         for dep in dependents:
             for blk in blockers:
                 if blk.id != dep.id and blk.id not in dep.dependencies:
                     dep.dependencies.append(blk.id)
-                    logger.debug(f"Dependency inferred: {dep.id} depends on {blk.id}")
 
 
-def generate_acceptance_criteria(task_title: str, tags: List[str]) -> str:
-    """Minimal acceptance criteria string (for description field)."""
-    base = f"Task: {task_title}."
+def _apply_dependency_hints(tickets: List[Task], items: List[ExtractedItem]) -> None:
+    titles = {ticket.id: ticket.title.lower() for ticket in tickets}
+    for ticket, item in zip(tickets, items):
+        for hint in item.dependency_hints:
+            hint_lower = hint.lower()
+            for other in tickets:
+                if other.id == ticket.id:
+                    continue
+                if any(word in titles[other.id] for word in hint_lower.split() if len(word) > 3):
+                    if other.id not in ticket.dependencies:
+                        ticket.dependencies.append(other.id)
+
+
+def generate_description(item: ExtractedItem, tags: List[str]) -> str:
+    parts = [f"Task: {item.task}."]
+    if item.description:
+        parts.append(f"Context: {item.description}")
+    if item.urgency_reason:
+        parts.append(f"Urgency: {item.urgency_reason}.")
+
     if "bug" in tags:
-        base += " Reproduce → Fix → Write regression test."
+        parts.append("Reproduce the issue, ship the fix, and add regression coverage.")
     elif "testing" in tags:
-        base += " Coverage ≥ 80% for target module."
+        parts.append("Increase test confidence for the target flow and keep CI green.")
     elif "frontend" in tags:
-        base += " Responsive on mobile + desktop. Cross-browser tested."
+        parts.append("Verify behavior on desktop and mobile, including cross-browser checks.")
     elif "auth" in tags:
-        base += " OAuth flow verified. Token refresh tested. Security review passed."
+        parts.append("Validate auth flow, token handling, and security-sensitive edge cases.")
     elif "infra" in tags:
-        base += " Pipeline green on main branch. Rollback plan documented."
+        parts.append("Keep the deployment path stable and document rollback or recovery steps.")
     else:
-        base += " Feature complete, reviewed, and merged to main."
-    return base
+        parts.append("Deliver reviewed, production-ready work.")
 
+    if item.acceptance_criteria:
+        parts.append("Acceptance: " + "; ".join(item.acceptance_criteria) + ".")
+    if item.owner_hint:
+        parts.append(f"Suggested owner: {item.owner_hint}.")
+    return " ".join(parts)
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 def create_tickets(items: List[ExtractedItem]) -> List[Task]:
-    """
-    Convert extracted items to enriched JIRA-style Task objects.
-
-    Assigns IDs, estimates story points, infers tags,
-    and resolves inter-task dependencies.
-    """
     tickets: List[Task] = []
 
     for i, item in enumerate(items):
         tags = infer_tags(item)
-        sp = estimate_story_points(item.task + " " + item.raw_text)
-        description = generate_acceptance_criteria(item.task, tags)
+        sp = estimate_story_points(f"{item.task} {item.description} {item.raw_text}")
+        description = generate_description(item, tags)
 
         ticket = Task(
             id=f"T{i + 1:03d}",
@@ -165,8 +146,8 @@ def create_tickets(items: List[ExtractedItem]) -> List[Task]:
             dependencies=[],
         )
         tickets.append(ticket)
-        logger.debug(f"Ticket {ticket.id}: {ticket.title} | SP={sp} | P={ticket.priority}")
 
     _infer_dependencies(tickets)
+    _apply_dependency_hints(tickets, items)
     logger.info(f"Generated {len(tickets)} JIRA tickets.")
     return tickets

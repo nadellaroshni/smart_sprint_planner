@@ -1,156 +1,227 @@
-# 🚀 Smart Sprint Planner — RL Environment
+# Smart Sprint Planner
 
-End-to-end Agile sprint planning RL environment.  
-**Pipeline:** Meeting Audio → Whisper Transcription → LLM Action Extraction → JIRA Ticket Generation → RL Sprint Planning → Dense Reward Signal
+Real-world OpenEnv environment for Agile sprint planning and re-planning.
 
----
+Pipeline:
+`meeting text/audio -> extraction -> JIRA-style tickets -> sprint assignments -> dynamic disruptions -> reward + grading`
 
-## Architecture
+This project is built for the OpenEnv Round 1 competition context in [context_scaler.txt](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/context_scaler.txt).
 
-```
-smart_sprint_env/
-├── env/
-│   ├── __init__.py
-│   ├── models.py          # Typed Pydantic models (Task, Developer, Observation, Action)
-│   ├── environment.py     # Core SprintEnv RL environment
-│   ├── transcription.py   # Whisper-based audio transcription (cached)
-│   ├── extraction.py      # LLM action item extraction with fallback
-│   ├── jira.py            # JIRA ticket generator (story points, deps, criteria)
-│   ├── tasks.py           # Easy / Medium / Hard task sets + developer pools
-│   └── graders.py         # Dense reward + hackathon grading (5 dimensions)
-├── server.py              # FastAPI REST server
-├── inference.py           # Heuristic agent runner
-├── tests/
-│   └── test_environment.py
-├── openenv.yaml
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
+## What The Environment Simulates
 
----
+The environment models a real planning workflow a delivery lead or engineering manager would actually do:
 
-## Quickstart
+- read sprint planning input
+- turn messy discussion into structured work items
+- assign work across a team with capacity constraints
+- react to changing conditions mid-sprint
+- maximize completion, on-time delivery, balance, and adaptability
 
-### 1. Setup
-```bash
-python -m venv venv
-source venv/bin/activate       # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
+## Difficulty Design
 
-### 2. Run inference (no LLM needed)
-```bash
-# Single episode
-python inference.py medium --render
+Difficulty now means volatility, not just “more tasks”.
 
-# All difficulties
-python inference.py --all
-```
+- `easy`: static sprint planning
+  Fixed backlog, fixed team capacity, fixed deadlines.
+- `medium`: one mid-sprint disruption
+  A single event is introduced, such as urgent work being added.
+- `hard`: multiple dynamic disruptions
+  The environment can introduce new work, capacity changes, and dependency shifts over time.
 
-### 3. Start API server
-```bash
-uvicorn server:app --reload --port 7860
-```
+## Project Flow
 
-API docs: http://localhost:7860/docs
+1. [env/transcription.py](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/env/transcription.py)
+   Turns audio into text, or uses provided text / deterministic scenario text.
+2. [env/extraction.py](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/env/extraction.py)
+   Extracts structured sprint work items.
+3. [env/jira.py](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/env/jira.py)
+   Converts extracted items into JIRA-style tickets.
+4. [env/environment.py](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/env/environment.py)
+   Runs the sprint simulation using `reset()`, `step()`, and `state()`.
+5. [env/graders.py](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/env/graders.py)
+   Computes dense rewards and final episode grades.
 
-### 4. Run tests
-```bash
-pytest tests/ -v
-```
+## Observation And Action Spaces
 
----
+Observation includes:
 
-## API Endpoints
+- meeting text
+- extracted items
+- active backlog tickets
+- developer pool
+- completed task ids
+- sprint day
+- sprint metrics
+- recent disruption events
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/reset` | Start new sprint episode |
-| POST | `/step` | Execute assignment action |
-| GET | `/state` | Inspect environment state |
-| GET | `/render` | Human-readable sprint board |
-| GET | `/grade` | Compute final score |
+Action is a single assignment:
 
-### Reset example
 ```json
-POST /reset
-{
-  "difficulty": "medium",
-  "transcript_override": "Fix auth bug urgently. Build dashboard by day 7."
-}
-```
-
-### Step example
-```json
-POST /step
 {
   "task_id": "T001",
   "developer_id": "D1"
 }
 ```
 
----
+## Extraction Schema
 
-## Reward Design (Dense)
+Each extracted item can include richer planning context than just title + deadline:
 
-| Signal | Value |
-|--------|-------|
-| Task completed on time | +0.5 |
-| Developer skill matches task tags | +0.2 |
-| High-priority task completed | +0.1 |
-| Task completed late | -0.3 |
-| Developer over capacity | -0.2 |
-| Invalid task/dev ID | -0.1 |
-| Blocked task assigned early | -0.4 |
-| All tasks completed (episode bonus) | +1.0 |
-| Balanced workload (Gini < 0.2) | +0.5 |
-| No deadline violations | +0.3 |
-| Efficiency bonus | +0.2 |
+- `task`
+- `description`
+- `deadline`
+- `priority`
+- `category`
+- `tags`
+- `acceptance_criteria`
+- `dependency_hints`
+- `owner_hint`
+- `urgency_reason`
+- `raw_text`
 
----
+LLM extraction is used when API credentials are configured. Otherwise the project uses a deterministic rule-based fallback for offline reproducibility.
 
-## Grading (Hackathon)
+## Reward And Grading
 
-| Dimension | Weight |
-|-----------|--------|
-| Completion rate | 30% |
-| On-time delivery | 25% |
-| Extraction quality | 20% |
-| Workload balance | 15% |
-| Efficiency | 10% |
+Step rewards include:
 
----
+- on-time completion reward
+- specialization match reward
+- high-priority completion reward
+- penalties for invalid ids, blocked tasks, and over-capacity assignment
+- adaptation reward for handling disruption-created work
 
-## Difficulty Levels
+Final grading combines:
 
-| Level | Tickets | Developers | Characteristics |
-|-------|---------|------------|-----------------|
-| Easy | 4 | 3 (full cap) | Clear tasks, generous deadlines |
-| Medium | 7 | 3 (reduced cap) | Mixed priorities, some dependencies |
-| Hard | 11 | 4 (bottlenecks) | Noisy transcript, tight deadlines, dep chains, skill mismatches |
+- completion rate
+- on-time rate
+- extraction quality
+- workload balance
+- efficiency
+- adaptability
 
----
+All final scores are normalized into `[0.0, 1.0]`.
 
-## Deployment (Hugging Face Spaces)
+## Competition Baseline Inference
 
-1. Create a Space → Docker template
-2. Push this repo
-3. Add environment variables:
-   - `API_BASE_URL` — LLM API base URL
-   - `MODEL_NAME` — e.g. `gpt-3.5-turbo` or HuggingFace model
-   - `HF_TOKEN` — your token
+The root-level [inference.py](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/inference.py) is structured for the competition baseline requirements:
+
+- uses the OpenAI client when API credentials are configured
+- falls back deterministically when no key is available locally
+- emits strict stdout lines in this order:
+  - `[START]`
+  - `[STEP]`
+  - `[END]`
+
+Environment variables:
+
+- `API_BASE_URL`
+- `MODEL_NAME`
+- `HF_TOKEN`
+- `OPENAI_API_KEY`
+
+Run one task:
 
 ```bash
-git init
-git add .
-git commit -m "init"
-git remote add origin https://huggingface.co/spaces/YOUR_USERNAME/smart-sprint-env
-git push
+python inference.py medium
 ```
 
-Validate:
+Run all tasks:
+
 ```bash
-bash validate-submission.sh https://YOUR_SPACE.hf.space
+python inference.py --all
 ```
+
+## Training
+
+Training is separate from the competition baseline script.
+
+[train.py](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/train.py) trains a DDQN agent over the environment. The training curriculum is intended to move from stable planning into dynamic re-planning.
+
+```bash
+python train.py --episodes 400
+```
+
+Evaluate saved checkpoints:
+
+```bash
+python eval.py --checkpoint checkpoints/best
+```
+
+## API Server
+
+Start the environment server:
+
+```bash
+uvicorn server.app:app --reload --port 7860
+```
+
+Endpoints:
+
+- `GET /health`
+- `POST /reset`
+- `POST /step`
+- `GET /state`
+- `GET /render`
+- `GET /grade`
+
+## Setup
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Windows:
+
+```powershell
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Tests
+
+```bash
+pytest tests -v
+```
+
+Current local status:
+
+- environment tests pass
+- extraction tests pass
+
+## Docker
+
+Build:
+
+```bash
+docker build -t smart-sprint-planner .
+```
+
+Run:
+
+```bash
+docker run -p 7860:7860 smart-sprint-planner
+```
+
+## OpenEnv Metadata
+
+The environment metadata currently lives in [openenv.yaml](C:/Users/ASUS/Documents/GitHub/smart_sprint_planner/openenv.yaml).
+
+Before submission, make sure:
+
+- OpenEnv metadata matches the final environment behavior
+- `openenv validate` passes
+- Docker build succeeds
+- the Hugging Face Space responds correctly
+- baseline inference is reproducible
+
+## Current Priority
+
+For the competition, the practical order is:
+
+1. keep the environment and inference path validator-compliant
+2. verify `openenv validate`, Docker, and HF Space behavior
+3. improve extraction quality and trained-agent performance

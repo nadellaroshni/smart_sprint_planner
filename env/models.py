@@ -34,6 +34,14 @@ class Difficulty(str, Enum):
     HARD = "hard"
 
 
+class EventType(str, Enum):
+    ADD_TASK = "add_task"
+    CAPACITY_CHANGE = "capacity_change"
+    ADD_DEPENDENCY = "add_dependency"
+    REMOVE_DEPENDENCY = "remove_dependency"
+    NOTE = "note"
+
+
 # ---------------------------------------------------------------------------
 # Core domain models
 # ---------------------------------------------------------------------------
@@ -63,10 +71,24 @@ class Developer(BaseModel):
 class ExtractedItem(BaseModel):
     """Raw item extracted from meeting transcript before JIRA enrichment."""
     task: str
+    description: str = ""
     deadline: int = 3
     priority: int = 2
+    category: str = "general"
     tags: List[str] = Field(default_factory=list)
+    acceptance_criteria: List[str] = Field(default_factory=list)
+    dependency_hints: List[str] = Field(default_factory=list)
+    owner_hint: Optional[str] = None
+    urgency_reason: str = ""
     raw_text: str = ""
+
+
+class SprintEvent(BaseModel):
+    day: int = Field(ge=1, description="Sprint day when the event becomes active")
+    type: EventType
+    title: str
+    description: str = ""
+    payload: Dict[str, Any] = Field(default_factory=dict)
 
 
 class SprintMetrics(BaseModel):
@@ -77,6 +99,10 @@ class SprintMetrics(BaseModel):
     total_reward: float = 0.0
     capacity_utilization: float = 0.0
     on_time_delivery_rate: float = 0.0
+    disruptions_applied: int = 0
+    disruption_tasks_added: int = 0
+    disruption_tasks_completed: int = 0
+    recovery_actions: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -88,9 +114,11 @@ class Observation(BaseModel):
     extracted_items: List[ExtractedItem]
     jira_tickets: List[Task]
     developers: List[Developer]
+    completed_task_ids: List[str] = Field(default_factory=list)
     sprint_day: int
     metrics: SprintMetrics = Field(default_factory=SprintMetrics)
     difficulty: Difficulty = Difficulty.MEDIUM
+    recent_events: List[SprintEvent] = Field(default_factory=list)
 
     @property
     def backlog_count(self) -> int:

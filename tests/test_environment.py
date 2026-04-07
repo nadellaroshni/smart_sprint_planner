@@ -59,6 +59,7 @@ class TestReset:
         obs = env.reset(difficulty=Difficulty.HARD)
         assert env.difficulty == Difficulty.HARD
         assert len(obs.jira_tickets) > 5  # hard has more tasks
+        assert len(env.state()["pending_events"]) >= 3
 
     def test_reset_with_transcript_override(self):
         env = SprintEnv(use_llm=False)
@@ -143,6 +144,35 @@ class TestStep:
             obs, _, done, _ = env_easy.step(Action(task_id=task.id, developer_id=dev.id))
             steps += 1
         assert done or steps >= 50  # Either done naturally or hit max
+
+    def test_medium_triggers_single_event(self, env_medium):
+        obs = env_medium.reset()
+        initial_pending = len(env_medium.state()["pending_events"])
+        assert initial_pending == 1
+
+        for _ in range(3):
+            task = obs.jira_tickets[0]
+            dev = next((d for d in obs.developers if d.capacity >= task.story_points), obs.developers[0])
+            obs, _, _, info = env_medium.step(Action(task_id=task.id, developer_id=dev.id))
+
+        assert len(obs.recent_events) == 1
+        assert info["events"][0]["type"] == "add_task"
+        assert len(env_medium.state()["pending_events"]) == 0
+
+    def test_hard_triggers_multiple_events_over_time(self, env_hard):
+        obs = env_hard.reset()
+        seen = 0
+
+        for _ in range(6):
+            task = obs.jira_tickets[0]
+            dev = next((d for d in obs.developers if d.capacity >= task.story_points), obs.developers[0])
+            obs, _, done, info = env_hard.step(Action(task_id=task.id, developer_id=dev.id))
+            seen += len(info.get("events", []))
+            if done:
+                break
+
+        assert seen >= 3
+        assert len(env_hard.state()["event_history"]) >= 3
 
 
 # ---------------------------------------------------------------------------

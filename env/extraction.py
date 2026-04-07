@@ -1,11 +1,11 @@
 """
-Action Item Extraction from meeting transcripts using an LLM.
+Action item extraction from meeting transcripts.
 
-Features:
-- Structured JSON extraction with Pydantic validation
-- Retry with exponential backoff (tenacity)
-- Deterministic output cache keyed by transcript hash
-- Graceful fallback to rule-based extraction if LLM is unavailable
+Design goals:
+  - Prefer structured LLM extraction when available
+  - Preserve richer planning detail than just task title + deadline
+  - Keep an offline heuristic fallback that is still useful
+  - Cache normalized outputs for deterministic training
 """
 
 from __future__ import annotations
@@ -16,22 +16,98 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional
 
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from .models import ExtractedItem, Priority
+from .models import ExtractedItem
 
 logger = logging.getLogger(__name__)
 
 CACHE_DIR = Path(".cache/extractions")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-# ---------------------------------------------------------------------------
-# LLM client (lazy init)
-# ---------------------------------------------------------------------------
+CACHE_VERSION = "v2"
 
 _client = None
+
+ACTION_VERBS = (
+    "fix",
+    "implement",
+    "build",
+    "create",
+    "develop",
+    "add",
+    "write",
+    "migrate",
+    "refactor",
+    "upgrade",
+    "update",
+    "configure",
+    "setup",
+    "stabilize",
+    "patch",
+    "complete",
+    "finish",
+    "improve",
+    "reduce",
+    "optimize",
+    "document",
+)
+
+TAG_KEYWORDS: Dict[str, List[str]] = {
+    "bug": ["bug", "broken", "failing", "failure", "error", "crash", "hotfix", "patch"],
+    "auth": ["auth", "oauth", "sso", "login", "token", "identity"],
+    "payments": ["payment", "checkout", "invoice", "billing", "transaction"],
+    "frontend": ["frontend", "ui", "ux", "layout", "page", "component", "mobile", "safari"],
+    "backend": ["backend", "api", "service", "endpoint", "worker", "gateway"],
+    "infra": ["infra", "ci", "cd", "pipeline", "deploy", "deployment", "docker", "kubernetes", "rollback"],
+    "testing": ["test", "tests", "coverage", "regression", "integration", "qa", "e2e"],
+    "database": ["database", "postgres", "mysql", "sql", "schema", "migration", "table"],
+    "analytics": ["analytics", "dashboard", "chart", "reporting", "metrics"],
+    "performance": ["slow", "latency", "performance", "optimize", "8 seconds", "load time"],
+    "documentation": ["document", "docs", "documentation", "runbook", "guide"],
+    "security": ["security", "privilege", "exploit", "vulnerability", "leak"],
+}
+
+OWNER_HINTS: Dict[str, List[str]] = {
+    "frontend": ["frontend", "ui", "mobile", "safari", "layout"],
+    "backend": ["backend", "api", "service", "database", "auth", "payment"],
+    "devops": ["infra", "pipeline", "deploy", "kubernetes", "docker"],
+    "qa": ["test", "coverage", "qa", "regression"],
+}
+
+CATEGORY_BY_TAG = {
+    "bug": "bugfix",
+    "testing": "quality",
+    "infra": "infrastructure",
+    "database": "data",
+    "analytics": "feature",
+    "documentation": "documentation",
+    "security": "security",
+}
+
+SYSTEM_PROMPT = """You are a senior Agile delivery lead extracting sprint-ready work from messy meetings.
+Return ONLY a valid JSON array. No markdown and no prose.
+
+For every actionable task, output:
+- task: short imperative title
+- description: one-sentence planning summary
+- deadline: sprint day number, integer 1-10
+- priority: integer 1-4 where 4 is critical
+- category: one of ["bugfix","feature","quality","infrastructure","documentation","security","data","general"]
+- tags: relevant technical tags
+- acceptance_criteria: 1-3 concise checklist items
+- dependency_hints: plain-language task dependencies if implied
+- owner_hint: best-fit team area if implied, else null
+- urgency_reason: why it is urgent, else empty string
+- raw_text: supporting quote/snippet from the transcript
+
+Rules:
+- Extract all actionable items, including implied engineering follow-up work.
+- Preserve urgency and sequencing details.
+- If a task blocks another, include that in dependency_hints.
+- If a deadline is vague, infer a reasonable sprint day from the wording.
+"""
 
 
 def _get_client():
@@ -39,42 +115,22 @@ def _get_client():
     if _client is None:
         try:
             from openai import OpenAI
+
+            api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                logger.info("No API key configured for LLM extraction; using fallback extractor.")
+                _client = "unavailable"
+                return _client
+
             _client = OpenAI(
                 base_url=os.getenv("API_BASE_URL", "https://api.openai.com/v1"),
-                api_key=os.getenv("HF_TOKEN", os.getenv("OPENAI_API_KEY", "no-key")),
+                api_key=api_key,
             )
         except Exception as e:
             logger.warning(f"Could not initialise OpenAI client: {e}")
             _client = "unavailable"
     return _client
 
-
-# ---------------------------------------------------------------------------
-# Extraction prompt
-# ---------------------------------------------------------------------------
-
-SYSTEM_PROMPT = """You are a senior Agile project manager.
-Extract all actionable tasks from the meeting transcript.
-Return ONLY a valid JSON array. No markdown, no explanation.
-
-Each element must have:
-  "task"     : short imperative title (string)
-  "deadline" : sprint day number (int, 1-10)
-  "priority" : 1=low 2=medium 3=high 4=critical (int)
-  "tags"     : relevant tags like ["backend","bug","auth","infra","frontend","testing"] (list)
-  "raw_text" : verbatim snippet from transcript (string)
-
-Rules:
-- If something is "urgent" or "P0" → priority 4
-- "high priority" → 3
-- default → 2
-- Include ALL tasks, even minor ones
-"""
-
-
-# ---------------------------------------------------------------------------
-# LLM extraction (with retry)
-# ---------------------------------------------------------------------------
 
 @retry(
     stop=stop_after_attempt(3),
@@ -87,37 +143,43 @@ def _call_llm(transcript: str) -> List[dict]:
     if client == "unavailable":
         raise RuntimeError("LLM client not available")
 
-    model = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
+    model = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Transcript:\n{transcript}"},
-        ],
-        temperature=0.0,  # deterministic
-        max_tokens=1024,
-    )
+    if hasattr(client, "responses"):
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"Transcript:\n{transcript}"},
+            ],
+        )
+        raw = getattr(response, "output_text", "").strip()
+    else:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"Transcript:\n{transcript}"},
+            ],
+            temperature=0.0,
+            max_tokens=1600,
+            response_format={"type": "json_object"},
+        )
+        raw = response.choices[0].message.content.strip()
 
-    raw = response.choices[0].message.content.strip()
-    # Strip possible markdown fences
     raw = re.sub(r"^```[a-z]*\n?", "", raw)
     raw = re.sub(r"\n?```$", "", raw)
-    return json.loads(raw)
+    parsed = json.loads(raw)
+    if isinstance(parsed, dict) and "items" in parsed:
+        parsed = parsed["items"]
+    if not isinstance(parsed, list):
+        raise ValueError("Expected extracted task list")
+    return parsed
 
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 def extract_tasks(transcript: str) -> List[ExtractedItem]:
-    """
-    Extract structured task items from a meeting transcript.
-
-    Tries LLM extraction first; falls back to rule-based if unavailable.
-    Results are cached by transcript hash for reproducibility.
-    """
-    cache_key = hashlib.sha256(transcript.encode()).hexdigest()
+    """Extract normalized task items from a meeting transcript."""
+    cache_key = hashlib.sha256(f"{CACHE_VERSION}::{transcript}".encode()).hexdigest()
     cache_file = CACHE_DIR / f"{cache_key}.json"
 
     if cache_file.exists():
@@ -132,83 +194,257 @@ def extract_tasks(transcript: str) -> List[ExtractedItem]:
         logger.warning(f"LLM extraction failed ({e}), using rule-based fallback.")
         raw_items = _rule_based_extract(transcript)
 
-    # Validate and normalise
-    items = []
-    for r in raw_items:
-        try:
-            items.append(
-                ExtractedItem(
-                    task=r.get("task", "Unnamed task"),
-                    deadline=max(1, min(int(r.get("deadline", 5)), 10)),
-                    priority=max(1, min(int(r.get("priority", 2)), 4)),
-                    tags=r.get("tags", []),
-                    raw_text=r.get("raw_text", ""),
-                )
-            )
-        except Exception as ve:
-            logger.warning(f"Skipping malformed item {r}: {ve}")
+    items = [_normalize_item(r) for r in raw_items]
+    items = [item for item in items if item is not None]
 
-    cache_file.write_text(json.dumps([i.model_dump() for i in items]))
+    cache_file.write_text(json.dumps([i.model_dump() for i in items], indent=2))
     return items
 
 
-# ---------------------------------------------------------------------------
-# Rule-based fallback
-# ---------------------------------------------------------------------------
-
-_PATTERNS = [
-    # (regex, priority, tags)
-    (r"(fix|bug|crash|error|broken|failing|intermittent)", 4, ["bug"]),
-    (r"(implement|build|create|develop|add)\s+\w+\s+(feature|module|page|api)", 3, ["feature"]),
-    (r"(migrate|refactor|upgrade|update)\s+\w+", 3, ["infra"]),
-    (r"(test|unit test|integration test|e2e)", 1, ["testing"]),
-    (r"(setup|configure|ci.?cd|pipeline|docker)", 2, ["infra"]),
-    (r"(dashboard|chart|ui|ux|frontend|profile)", 2, ["frontend"]),
-    (r"(database|db|sql|postgres|mongo)", 3, ["backend", "infra"]),
-]
-
-_DEADLINE_HINTS = {
-    "urgent": 2, "immediately": 1, "asap": 1,
-    "end of sprint": 10, "this week": 5, "tomorrow": 2,
-    "day 1": 1, "day 2": 2, "day 3": 3, "day 4": 4, "day 5": 5,
-    "day 6": 6, "day 7": 7, "day 8": 8,
-}
+def _normalize_item(raw: dict) -> Optional[ExtractedItem]:
+    try:
+        return ExtractedItem(
+            task=_clean_title(str(raw.get("task", "Unnamed task"))),
+            description=str(raw.get("description", "")).strip(),
+            deadline=max(1, min(int(raw.get("deadline", 5)), 10)),
+            priority=max(1, min(int(raw.get("priority", 2)), 4)),
+            category=str(raw.get("category", "general")).strip().lower() or "general",
+            tags=_normalize_tags(raw.get("tags", [])),
+            acceptance_criteria=_normalize_list(raw.get("acceptance_criteria", []), limit=3),
+            dependency_hints=_normalize_list(raw.get("dependency_hints", []), limit=3),
+            owner_hint=_clean_optional(raw.get("owner_hint")),
+            urgency_reason=str(raw.get("urgency_reason", "")).strip(),
+            raw_text=str(raw.get("raw_text", "")).strip(),
+        )
+    except Exception as ve:
+        logger.warning(f"Skipping malformed extraction item {raw}: {ve}")
+        return None
 
 
 def _rule_based_extract(transcript: str) -> List[dict]:
-    """Simple sentence-level heuristic extraction."""
-    sentences = re.split(r"[.;]", transcript)
-    items = []
+    clauses = _split_into_clauses(transcript)
+    items: List[dict] = []
 
-    for sent in sentences:
-        sent = sent.strip()
-        if len(sent) < 10:
+    for clause in clauses:
+        if not _looks_actionable(clause):
             continue
 
-        priority = 2
-        tags = []
-        for pattern, prio, ptags in _PATTERNS:
-            if re.search(pattern, sent, re.IGNORECASE):
-                priority = max(priority, prio)
-                tags.extend(ptags)
+        tags = _infer_tags(clause)
+        category = _infer_category(tags)
+        priority = _infer_priority(clause)
+        deadline = _infer_deadline(clause)
+        dependency_hints = _infer_dependency_hints(clause)
+        owner_hint = _infer_owner_hint(clause, tags)
+        urgency_reason = _infer_urgency_reason(clause)
 
-        deadline = 5
-        for hint, day in _DEADLINE_HINTS.items():
-            if hint in sent.lower():
-                deadline = day
-                break
-
-        # Extract a short task title (first 8 words)
-        words = sent.split()
-        title = " ".join(words[:8]).capitalize()
-
-        items.append({
-            "task": title,
-            "deadline": deadline,
-            "priority": priority,
-            "tags": list(set(tags)) or ["general"],
-            "raw_text": sent,
-        })
+        items.append(
+            {
+                "task": _task_from_clause(clause),
+                "description": _describe_clause(clause),
+                "deadline": deadline,
+                "priority": priority,
+                "category": category,
+                "tags": tags,
+                "acceptance_criteria": _acceptance_from_clause(clause, tags),
+                "dependency_hints": dependency_hints,
+                "owner_hint": owner_hint,
+                "urgency_reason": urgency_reason,
+                "raw_text": clause,
+            }
+        )
 
     logger.info(f"Rule-based extracted {len(items)} items.")
     return items
+
+
+def _split_into_clauses(transcript: str) -> List[str]:
+    text = re.sub(r"\s+", " ", transcript.strip())
+    sentences = re.split(r"(?<=[.!?])\s+|;\s*", text)
+    clauses: List[str] = []
+    for sentence in sentences:
+        parts = re.split(r"\b(?:also|and|plus|then|meanwhile|separately)\b", sentence, flags=re.IGNORECASE)
+        for part in parts:
+            cleaned = part.strip(" ,.-")
+            if len(cleaned) >= 12:
+                clauses.append(cleaned)
+    return clauses
+
+
+def _looks_actionable(text: str) -> bool:
+    lower = text.lower()
+    return any(re.search(rf"\b{verb}\b", lower) for verb in ACTION_VERBS) or any(
+        keyword in lower for words in TAG_KEYWORDS.values() for keyword in words
+    )
+
+
+def _infer_tags(text: str) -> List[str]:
+    lower = text.lower()
+    tags = {
+        tag
+        for tag, keywords in TAG_KEYWORDS.items()
+        for keyword in keywords
+        if keyword in lower
+    }
+    if not tags:
+        tags.add("general")
+    return sorted(tags)
+
+
+def _infer_category(tags: List[str]) -> str:
+    for tag in tags:
+        if tag in CATEGORY_BY_TAG:
+            return CATEGORY_BY_TAG[tag]
+    if "general" in tags:
+        return "general"
+    return "feature"
+
+
+def _infer_priority(text: str) -> int:
+    lower = text.lower()
+    if any(token in lower for token in ["p0", "critical", "urgent", "immediately", "today", "security"]):
+        return 4
+    if any(token in lower for token in ["high priority", "blocker", "blocking", "must", "tomorrow"]):
+        return 3
+    if any(token in lower for token in ["low priority", "nice to have", "later"]):
+        return 1
+    return 2
+
+
+def _infer_deadline(text: str) -> int:
+    lower = text.lower()
+    explicit = re.search(r"\bday\s*(\d{1,2})\b", lower)
+    if explicit:
+        return max(1, min(int(explicit.group(1)), 10))
+
+    if any(token in lower for token in ["immediately", "today", "now"]):
+        return 1
+    if any(token in lower for token in ["tomorrow", "within 2 days", "next 2 days"]):
+        return 2
+    if "end of sprint" in lower:
+        return 10
+    if "this week" in lower:
+        return 5
+    if any(token in lower for token in ["client demo", "release", "before launch"]):
+        return 4
+    return 5
+
+
+def _infer_dependency_hints(text: str) -> List[str]:
+    lower = text.lower()
+    hints: List[str] = []
+    patterns = [
+        r"blocks? ([^.,;]+)",
+        r"blocked by ([^.,;]+)",
+        r"depends on ([^.,;]+)",
+        r"before ([^.,;]+)",
+        r"after ([^.,;]+)",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, lower):
+            hints.append(match.group(0).strip())
+    return hints[:3]
+
+
+def _infer_owner_hint(text: str, tags: List[str]) -> Optional[str]:
+    lower = text.lower()
+    for owner, keywords in OWNER_HINTS.items():
+        if any(keyword in lower for keyword in keywords):
+            return owner
+    if "frontend" in tags:
+        return "frontend"
+    if {"backend", "database", "auth", "payments"} & set(tags):
+        return "backend"
+    if "infra" in tags:
+        return "devops"
+    if "testing" in tags:
+        return "qa"
+    return None
+
+
+def _infer_urgency_reason(text: str) -> str:
+    lower = text.lower()
+    if "blocking" in lower or "blocks" in lower:
+        return "Blocks downstream work"
+    if any(token in lower for token in ["urgent", "critical", "p0", "security"]):
+        return "Critical production urgency"
+    if "client demo" in lower:
+        return "Needed for client demo"
+    if "release" in lower:
+        return "Needed for release readiness"
+    return ""
+
+
+def _task_from_clause(text: str) -> str:
+    cleaned = re.sub(r"^(we need to|someone needs to|need to|please|also)\s+", "", text, flags=re.IGNORECASE)
+    cleaned = cleaned.strip(" .")
+    words = cleaned.split()
+    if len(words) <= 10:
+        return _clean_title(cleaned)
+    return _clean_title(" ".join(words[:10]))
+
+
+def _describe_clause(text: str) -> str:
+    cleaned = text.strip()
+    if cleaned.endswith("."):
+        return cleaned
+    return f"{cleaned}."
+
+
+def _acceptance_from_clause(text: str, tags: List[str]) -> List[str]:
+    criteria = ["Implementation merged and verified"]
+    if "bug" in tags:
+        criteria = ["Issue reproduced", "Fix validated", "Regression coverage added"]
+    elif "testing" in tags:
+        criteria = ["Coverage added for target flow", "Tests pass in CI"]
+    elif "frontend" in tags:
+        criteria = ["Works on desktop and mobile", "Visual regression checked"]
+    elif "infra" in tags:
+        criteria = ["Pipeline succeeds", "Rollback or recovery path documented"]
+    elif "database" in tags:
+        criteria = ["Migration runs safely", "Data integrity verified"]
+    elif "documentation" in tags:
+        criteria = ["Documentation reviewed", "Consumers can follow the new flow"]
+    elif "security" in tags:
+        criteria = ["Exploit path closed", "Security-sensitive behavior re-tested"]
+
+    if "performance" in tags:
+        criteria = criteria[:2] + ["Performance improved against baseline"]
+    return criteria[:3]
+
+
+def _normalize_tags(tags: object) -> List[str]:
+    if not isinstance(tags, list):
+        return []
+    normalized = []
+    for tag in tags:
+        clean = str(tag).strip().lower().replace(" ", "_")
+        if clean:
+            normalized.append(clean)
+    return sorted(set(normalized))
+
+
+def _normalize_list(values: object, limit: int = 3) -> List[str]:
+    if isinstance(values, str):
+        values = [values]
+    if not isinstance(values, list):
+        return []
+    cleaned = []
+    for value in values:
+        text = str(value).strip()
+        if text:
+            cleaned.append(text)
+    return cleaned[:limit]
+
+
+def _clean_title(text: str) -> str:
+    text = re.sub(r"\s+", " ", text).strip(" .")
+    if not text:
+        return "Unnamed task"
+    return text[0].upper() + text[1:]
+
+
+def _clean_optional(value: object) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None

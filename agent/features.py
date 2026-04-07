@@ -26,12 +26,12 @@ MAX_TASKS = 12
 MAX_DEVS  = 4
 
 FEATURE_DIM = (
-    3                            # sprint progress
+    5                            # sprint progress + event context
     + MAX_TASKS * 7              # task features
     + MAX_DEVS  * 5              # dev features
     + MAX_TASKS * MAX_DEVS       # affinity
 )
-# = 3 + 84 + 20 + 48 = 155
+# = 5 + 84 + 20 + 48 = 157
 
 
 def encode(obs: Observation) -> np.ndarray:
@@ -47,6 +47,11 @@ def encode(obs: Observation) -> np.ndarray:
     feats.append(len(obs.jira_tickets) / max(MAX_TASKS, 1))   # fraction backlog remaining
     total_sp = sum(t.story_points for t in obs.jira_tickets)
     feats.append(min(total_sp / 50.0, 1.0))                   # story point pressure
+    recent_events = obs.recent_events[-3:]
+    feats.append(min(len(recent_events) / 3.0, 1.0))          # recent disruption count
+    feats.append(
+        float(any(event.type.value in {"add_task", "capacity_change"} for event in recent_events))
+    )
 
     # 2. Task features ────────────────────────────────────────────────────────
     tasks = obs.jira_tickets[:MAX_TASKS]

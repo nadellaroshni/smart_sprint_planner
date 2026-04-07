@@ -1,0 +1,2985 @@
+[
+  {
+    "scenario_id": "sprint_001",
+    "difficulty": "easy",
+    "transcript": "Alright team, let's knock out this sprint. Maya, you're taking the password reset flow—users are complaining it's confusing. Should be straightforward. Dev, I need you on the analytics dashboard. Marketing's been asking for weeks. And Sarah, can you tackle the Stripe webhook bug? Payments are dropping silently. Let's also get the API docs updated—they're out of sync with v2. Oh, and we need that Docker config cleaned up before we onboard the new contractor. Deadlines are spread out, nothing crazy. Anything blocking you?",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Maya Chen",
+        "capacity": 8,
+        "skill": 0.9,
+        "specializations": ["frontend", "ui", "auth"]
+      },
+      {
+        "id": "D2",
+        "name": "Dev Patel",
+        "capacity": 7,
+        "skill": 0.85,
+        "specializations": ["backend", "analytics", "database"]
+      },
+      {
+        "id": "D3",
+        "name": "Sarah Kim",
+        "capacity": 9,
+        "skill": 0.92,
+        "specializations": ["backend", "payments", "security"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Redesign password reset flow",
+        "description": "Simplify the multi-step password reset to reduce user drop-off",
+        "deadline": 5,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["auth", "ux"],
+        "acceptance_criteria": ["Single-page flow implemented", "Email template updated", "Error states handled"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Maya, you're taking the password reset flow—users are complaining it's confusing"
+      },
+      {
+        "task": "Build marketing analytics dashboard",
+        "description": "Create dashboard showing campaign metrics and conversion funnels",
+        "deadline": 7,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["analytics", "reporting"],
+        "acceptance_criteria": ["Dashboard displays key metrics", "Export to CSV functionality", "Filters by date range"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "Dev, I need you on the analytics dashboard. Marketing's been asking for weeks"
+      },
+      {
+        "task": "Fix Stripe webhook validation bug",
+        "description": "Payment webhooks failing silently due to signature validation issue",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["payments", "stripe"],
+        "acceptance_criteria": ["Webhook signature properly validated", "Error logging added", "Tests cover failure cases"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Payments dropping silently",
+        "raw_text": "Sarah, can you tackle the Stripe webhook bug? Payments are dropping silently"
+      },
+      {
+        "task": "Update API documentation for v2",
+        "description": "Sync documentation with latest API changes from v2 release",
+        "deadline": 6,
+        "priority": 3,
+        "category": "documentation",
+        "tags": ["docs", "api"],
+        "acceptance_criteria": ["All v2 endpoints documented", "Examples updated", "Deprecated endpoints marked"],
+        "dependency_hints": [],
+        "owner_hint": null,
+        "urgency_reason": "",
+        "raw_text": "Let's also get the API docs updated—they're out of sync with v2"
+      },
+      {
+        "task": "Clean up Docker configuration",
+        "description": "Simplify and document Docker setup for new contractor onboarding",
+        "deadline": 8,
+        "priority": 2,
+        "category": "infrastructure",
+        "tags": ["devops", "docker"],
+        "acceptance_criteria": ["Unused services removed", "README updated", "One-command setup works"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "",
+        "raw_text": "we need that Docker config cleaned up before we onboard the new contractor"
+      }
+    ],
+    "events": []
+  },
+  {
+    "scenario_id": "sprint_002",
+    "difficulty": "easy",
+    "transcript": "Morning everyone. Quick sprint planning. First up, we've got a data migration for the legacy customers table—Alex, that's yours. Then there's the mobile app crash on Android 13—pretty high priority. Jenny, can you handle that? We also need to add rate limiting to the public API before we announce the developer program. And let's not forget the accessibility audit—Sara mentioned keyboard navigation is broken in the settings page. Finally, there's that performance issue with the search endpoint. It's timing out for large result sets. Should be doable in ten days.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Alex Rodriguez",
+        "capacity": 10,
+        "skill": 0.88,
+        "specializations": ["database", "backend", "data"]
+      },
+      {
+        "id": "D2",
+        "name": "Jenny Wu",
+        "capacity": 6,
+        "skill": 0.91,
+        "specializations": ["frontend", "qa", "testing"]
+      },
+      {
+        "id": "D3",
+        "name": "Marcus Lee",
+        "capacity": 8,
+        "skill": 0.87,
+        "specializations": ["backend", "performance", "security"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Migrate legacy customers table",
+        "description": "Move customer data from old schema to new normalized structure",
+        "deadline": 6,
+        "priority": 2,
+        "category": "data",
+        "tags": ["migration", "database"],
+        "acceptance_criteria": ["Data migrated without loss", "Rollback script ready", "Verified in staging"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "we've got a data migration for the legacy customers table—Alex, that's yours"
+      },
+      {
+        "task": "Fix Android 13 crash on launch",
+        "description": "App crashes immediately on Android 13 devices due to splash screen API change",
+        "deadline": 2,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["mobile", "android"],
+        "acceptance_criteria": ["App launches successfully on Android 13", "Tested on multiple devices", "Crash reports cleared"],
+        "dependency_hints": [],
+        "owner_hint": "qa",
+        "urgency_reason": "High priority mobile crash",
+        "raw_text": "there's the mobile app crash on Android 13—pretty high priority"
+      },
+      {
+        "task": "Implement API rate limiting",
+        "description": "Add rate limiting middleware to public API endpoints for developer program launch",
+        "deadline": 5,
+        "priority": 2,
+        "category": "security",
+        "tags": ["api", "security"],
+        "acceptance_criteria": ["Rate limits enforced per API key", "429 responses with retry headers", "Configurable thresholds"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "we need to add rate limiting to the public API before we announce the developer program"
+      },
+      {
+        "task": "Fix keyboard navigation in settings",
+        "description": "Restore keyboard accessibility for settings page navigation and interactions",
+        "deadline": 7,
+        "priority": 3,
+        "category": "quality",
+        "tags": ["accessibility", "frontend"],
+        "acceptance_criteria": ["All controls keyboard accessible", "Focus indicators visible", "Screen reader tested"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "accessibility audit—Sara mentioned keyboard navigation is broken in the settings page"
+      },
+      {
+        "task": "Optimize search endpoint performance",
+        "description": "Fix timeout issues on search endpoint for queries returning large result sets",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["performance", "backend"],
+        "acceptance_criteria": ["Response time under 500ms", "Pagination implemented", "Indexes optimized"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "performance issue with the search endpoint. It's timing out for large result sets"
+      },
+      {
+        "task": "Add health check endpoints",
+        "description": "Implement health check and readiness probe endpoints for Kubernetes",
+        "deadline": 9,
+        "priority": 3,
+        "category": "infrastructure",
+        "tags": ["devops", "monitoring"],
+        "acceptance_criteria": ["Health endpoint returns status", "Database connectivity checked", "K8s probes configured"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "",
+        "raw_text": ""
+      }
+    ],
+    "events": []
+  },
+  {
+    "scenario_id": "sprint_003",
+    "difficulty": "medium",
+    "transcript": "Okay team, sprint 14 time. We've got the CSV export feature that sales is pushing for—that's top of the list. Then there's the email notification bug where users aren't getting alerts. Also need to upgrade the Postgres version before EOL next month. Let's add two-factor authentication to the admin panel—security audit flagged that. And we should implement that new dashboard widget for real-time metrics. Oh, and fix the broken image uploads in Safari. Thoughts?",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Priya Sharma",
+        "capacity": 7,
+        "skill": 0.89,
+        "specializations": ["backend", "database", "data"]
+      },
+      {
+        "id": "D2",
+        "name": "Tom Bennett",
+        "capacity": 8,
+        "skill": 0.86,
+        "specializations": ["frontend", "ui", "testing"]
+      },
+      {
+        "id": "D3",
+        "name": "Lisa Zhang",
+        "capacity": 9,
+        "skill": 0.93,
+        "specializations": ["backend", "security", "auth"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Build CSV export functionality",
+        "description": "Allow users to export report data as CSV files with custom column selection",
+        "deadline": 5,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["export", "data"],
+        "acceptance_criteria": ["CSV generated with correct format", "Column filtering works", "Handles large datasets"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Sales team requesting",
+        "raw_text": "CSV export feature that sales is pushing for—that's top of the list"
+      },
+      {
+        "task": "Fix email notification delivery",
+        "description": "Users not receiving email alerts due to queue processing failure",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["email", "notifications"],
+        "acceptance_criteria": ["Emails sent reliably", "Queue monitoring added", "Failed jobs retry"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "email notification bug where users aren't getting alerts"
+      },
+      {
+        "task": "Upgrade PostgreSQL to v15",
+        "description": "Migrate production database to PostgreSQL 15 before v11 EOL",
+        "deadline": 8,
+        "priority": 2,
+        "category": "infrastructure",
+        "tags": ["database", "upgrade"],
+        "acceptance_criteria": ["Upgrade completed without downtime", "Compatibility verified", "Backups validated"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "upgrade the Postgres version before EOL next month"
+      },
+      {
+        "task": "Implement 2FA for admin panel",
+        "description": "Add two-factor authentication requirement for all admin accounts",
+        "deadline": 7,
+        "priority": 2,
+        "category": "security",
+        "tags": ["auth", "security"],
+        "acceptance_criteria": ["TOTP authentication working", "Backup codes generated", "Enforcement configurable"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add two-factor authentication to the admin panel—security audit flagged that"
+      },
+      {
+        "task": "Create real-time metrics widget",
+        "description": "Build dashboard widget showing live system metrics and active users",
+        "deadline": 6,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["dashboard", "analytics"],
+        "acceptance_criteria": ["Widget updates in real-time", "Metrics accurate", "Responsive design"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "implement that new dashboard widget for real-time metrics"
+      },
+      {
+        "task": "Fix Safari image upload bug",
+        "description": "Image uploads failing silently in Safari due to FormData handling issue",
+        "deadline": 4,
+        "priority": 2,
+        "category": "bugfix",
+        "tags": ["frontend", "safari"],
+        "acceptance_criteria": ["Uploads work in Safari", "Error handling improved", "Cross-browser tested"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "fix the broken image uploads in Safari"
+      }
+    ],
+    "events": [
+      {
+        "day": 4,
+        "type": "add_task",
+        "title": "Critical XSS vulnerability reported",
+        "description": "Security researcher reported XSS vulnerability in user profile page",
+        "payload": {
+          "task": "Patch XSS vulnerability in profiles",
+          "description": "Fix reflected XSS in user profile display name field",
+          "deadline": 6,
+          "priority": 1,
+          "category": "security",
+          "tags": ["security", "xss"],
+          "acceptance_criteria": ["Input sanitized properly", "Security tests added", "Deployed to production"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Critical security issue"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_004",
+    "difficulty": "medium",
+    "transcript": "Let's tackle this sprint. We need the invoice generation system rebuilt—current one is a mess. Also, there's a memory leak in the background job processor that's causing restarts. Marketing wants A/B testing infrastructure for the landing page. We should also add the transaction history export feature. And can someone look at the slow login times? Users are complaining. Finally, let's get the test coverage up—we're below 60% on the payment module.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Jordan Smith",
+        "capacity": 9,
+        "skill": 0.9,
+        "specializations": ["backend", "payments", "data"]
+      },
+      {
+        "id": "D2",
+        "name": "Emily Carter",
+        "capacity": 7,
+        "skill": 0.84,
+        "specializations": ["frontend", "analytics", "ui"]
+      },
+      {
+        "id": "D3",
+        "name": "Raj Kumar",
+        "capacity": 8,
+        "skill": 0.88,
+        "specializations": ["backend", "performance", "testing"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Rebuild invoice generation system",
+        "description": "Replace legacy invoice generator with new template-based system",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["invoices", "payments"],
+        "acceptance_criteria": ["PDF invoices generated correctly", "Templates customizable", "Backwards compatible"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "invoice generation system rebuilt—current one is a mess"
+      },
+      {
+        "task": "Fix memory leak in job processor",
+        "description": "Background job processor leaking memory causing frequent restarts",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["performance", "backend"],
+        "acceptance_criteria": ["Memory usage stable", "No restart loops", "Monitoring alerts configured"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Causing service restarts",
+        "raw_text": "memory leak in the background job processor that's causing restarts"
+      },
+      {
+        "task": "Build A/B testing framework",
+        "description": "Create infrastructure for running A/B tests on landing pages",
+        "deadline": 7,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["analytics", "testing"],
+        "acceptance_criteria": ["Variant assignment working", "Metrics tracked", "Admin UI for setup"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Marketing wants A/B testing infrastructure for the landing page"
+      },
+      {
+        "task": "Add transaction history export",
+        "description": "Allow users to download their complete transaction history",
+        "deadline": 6,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["export", "transactions"],
+        "acceptance_criteria": ["Export includes all fields", "Date range filtering", "Multiple format support"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add the transaction history export feature"
+      },
+      {
+        "task": "Optimize login endpoint performance",
+        "description": "Reduce login response time which is currently averaging 3+ seconds",
+        "deadline": 5,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["performance", "auth"],
+        "acceptance_criteria": ["Login under 1 second", "Database queries optimized", "Caching implemented"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "User complaints",
+        "raw_text": "can someone look at the slow login times? Users are complaining"
+      },
+      {
+        "task": "Increase payment module test coverage",
+        "description": "Add unit and integration tests to bring payment module coverage above 80%",
+        "deadline": 9,
+        "priority": 3,
+        "category": "quality",
+        "tags": ["testing", "payments"],
+        "acceptance_criteria": ["Coverage above 80%", "Critical paths tested", "CI passing"],
+        "dependency_hints": [],
+        "owner_hint": "qa",
+        "urgency_reason": "",
+        "raw_text": "get the test coverage up—we're below 60% on the payment module"
+      }
+    ],
+    "events": [
+      {
+        "day": 5,
+        "type": "capacity_change",
+        "title": "Jordan out sick",
+        "description": "Jordan Smith unavailable for 3 days due to illness",
+        "payload": {
+          "developer_id": "D1",
+          "new_capacity": 4,
+          "reason": "Sick leave days 5-7"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_005",
+    "difficulty": "hard",
+    "transcript": "Alright, big sprint ahead. First priority: the checkout flow redesign—conversion is terrible. We also need to integrate the new payment gateway before the old contract expires. There's a critical bug in the recommendation engine showing duplicate items. Plus, we need to add internationalization support for Spanish and French. The mobile app needs push notification support—that's been in the backlog forever. Also, implement the new user onboarding tutorial. Oh, and DevOps wants us to migrate to the new CI/CD pipeline. Customer support is drowning—we need a chatbot MVP. And finally, the admin dashboard needs better filtering. This is ambitious but we can do it.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Sofia Martinez",
+        "capacity": 8,
+        "skill": 0.91,
+        "specializations": ["frontend", "ui", "payments"]
+      },
+      {
+        "id": "D2",
+        "name": "Chris Johnson",
+        "capacity": 9,
+        "skill": 0.89,
+        "specializations": ["backend", "database", "analytics"]
+      },
+      {
+        "id": "D3",
+        "name": "Nina Patel",
+        "capacity": 7,
+        "skill": 0.87,
+        "specializations": ["backend", "infra", "devops"]
+      },
+      {
+        "id": "D4",
+        "name": "Kyle Wong",
+        "capacity": 8,
+        "skill": 0.93,
+        "specializations": ["frontend", "testing", "qa"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Redesign checkout flow",
+        "description": "Simplify multi-step checkout to single page to improve conversion rates",
+        "deadline": 6,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["checkout", "conversion"],
+        "acceptance_criteria": ["Single-page checkout working", "A/B test configured", "Mobile responsive"],
+        "dependency_hints": ["May need payment gateway integration completed first"],
+        "owner_hint": "frontend",
+        "urgency_reason": "Poor conversion rates",
+        "raw_text": "checkout flow redesign—conversion is terrible"
+      },
+      {
+        "task": "Integrate new payment gateway",
+        "description": "Switch from legacy payment provider to new gateway before contract expiration",
+        "deadline": 5,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["payments", "integration"],
+        "acceptance_criteria": ["All payment methods migrated", "Webhooks configured", "Tested in production"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Contract deadline",
+        "raw_text": "integrate the new payment gateway before the old contract expires"
+      },
+      {
+        "task": "Fix recommendation engine duplicates",
+        "description": "Recommendation algorithm returning duplicate items in results",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["recommendations", "algorithm"],
+        "acceptance_criteria": ["No duplicate items shown", "Performance maintained", "Edge cases handled"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Critical user experience issue",
+        "raw_text": "critical bug in the recommendation engine showing duplicate items"
+      },
+      {
+        "task": "Add i18n for Spanish and French",
+        "description": "Implement internationalization framework and translations for ES and FR",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["i18n", "localization"],
+        "acceptance_criteria": ["Framework integrated", "All strings translated", "Language switcher working"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "add internationalization support for Spanish and French"
+      },
+      {
+        "task": "Implement push notifications",
+        "description": "Add push notification support to mobile app for order updates and promotions",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["mobile", "notifications"],
+        "acceptance_criteria": ["Notifications delivered reliably", "User preferences respected", "Deep linking works"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "mobile app needs push notification support—that's been in the backlog forever"
+      },
+      {
+        "task": "Build user onboarding tutorial",
+        "description": "Create interactive tutorial for new users covering key features",
+        "deadline": 9,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["onboarding", "ui"],
+        "acceptance_criteria": ["Tutorial covers main features", "Dismissible and resumable", "Analytics tracking added"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "implement the new user onboarding tutorial"
+      },
+      {
+        "task": "Migrate to new CI/CD pipeline",
+        "description": "Move build and deployment process to new Jenkins-based pipeline",
+        "deadline": 8,
+        "priority": 2,
+        "category": "infrastructure",
+        "tags": ["devops", "cicd"],
+        "acceptance_criteria": ["All repos migrated", "Deploy times maintained", "Rollback tested"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "",
+        "raw_text": "DevOps wants us to migrate to the new CI/CD pipeline"
+      },
+      {
+        "task": "Create chatbot MVP",
+        "description": "Build basic chatbot for handling common customer support queries",
+        "deadline": 10,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["support", "chatbot"],
+        "acceptance_criteria": ["Handles top 10 FAQs", "Escalates to human", "Response time under 2s"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "Customer support is drowning—we need a chatbot MVP"
+      },
+      {
+        "task": "Add admin dashboard filtering",
+        "description": "Implement advanced filtering and search in admin dashboard tables",
+        "deadline": 7,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["admin", "ui"],
+        "acceptance_criteria": ["Multi-column filtering works", "Filters persist", "Export filtered results"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "admin dashboard needs better filtering"
+      }
+    ],
+    "events": [
+      {
+        "day": 2,
+        "type": "add_task",
+        "title": "Production database outage",
+        "description": "Database corrupted, need immediate backup restoration and monitoring",
+        "payload": {
+          "task": "Restore database from backup",
+          "description": "Emergency database restoration after corruption incident",
+          "deadline": 3,
+          "priority": 1,
+          "category": "infrastructure",
+          "tags": ["database", "emergency"],
+          "acceptance_criteria": ["Database restored", "Data integrity verified", "Monitoring improved"],
+          "dependency_hints": [],
+          "owner_hint": "devops",
+          "urgency_reason": "Production outage"
+        }
+      },
+      {
+        "day": 4,
+        "type": "capacity_change",
+        "title": "Sofia attending conference",
+        "description": "Sofia at React conference days 4-6, limited availability",
+        "payload": {
+          "developer_id": "D1",
+          "new_capacity": 3,
+          "reason": "Conference attendance"
+        }
+      },
+      {
+        "day": 5,
+        "type": "add_dependency",
+        "title": "Payment gateway requires checkout changes",
+        "description": "New payment gateway SDK requires checkout flow modifications",
+        "payload": {
+          "task": "Redesign checkout flow",
+          "depends_on": "Integrate new payment gateway",
+          "reason": "Gateway SDK changes checkout requirements"
+        }
+      },
+      {
+        "day": 7,
+        "type": "add_task",
+        "title": "GDPR data export request",
+        "description": "Legal requires user data export feature for GDPR compliance",
+        "payload": {
+          "task": "Implement GDPR data export",
+          "description": "Build system for users to download all their personal data",
+          "deadline": 9,
+          "priority": 1,
+          "category": "security",
+          "tags": ["gdpr", "compliance"],
+          "acceptance_criteria": ["All user data exportable", "Format validated", "Audit trail created"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Legal compliance requirement"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_006",
+    "difficulty": "easy",
+    "transcript": "Team, simple sprint this time. We need to fix the broken forgot-password email link—it's pointing to localhost somehow. Also, add dark mode toggle to the settings page—users keep asking for it. Let's update the terms of service page with the new legal copy. And we should add logging to the file upload service so we can debug issues better. Finally, optimize those heavy SQL queries in the reports module. Nothing too crazy.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Ahmed Hassan",
+        "capacity": 8,
+        "skill": 0.85,
+        "specializations": ["backend", "database", "performance"]
+      },
+      {
+        "id": "D2",
+        "name": "Rachel Green",
+        "capacity": 7,
+        "skill": 0.88,
+        "specializations": ["frontend", "ui", "documentation"]
+      },
+      {
+        "id": "D3",
+        "name": "Victor Osei",
+        "capacity": 9,
+        "skill": 0.9,
+        "specializations": ["backend", "infra", "testing"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Fix password reset email link",
+        "description": "Reset email links pointing to localhost instead of production domain",
+        "deadline": 2,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["email", "auth"],
+        "acceptance_criteria": ["Links point to correct domain", "Tested in all environments", "Email template updated"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Broken user feature",
+        "raw_text": "fix the broken forgot-password email link—it's pointing to localhost somehow"
+      },
+      {
+        "task": "Add dark mode toggle",
+        "description": "Implement dark mode theme with toggle in user settings",
+        "deadline": 6,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["ui", "theme"],
+        "acceptance_criteria": ["Toggle switches themes", "Preference persisted", "All pages styled"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "add dark mode toggle to the settings page—users keep asking for it"
+      },
+      {
+        "task": "Update terms of service page",
+        "description": "Replace TOS content with new legal copy from counsel",
+        "deadline": 4,
+        "priority": 2,
+        "category": "documentation",
+        "tags": ["legal", "content"],
+        "acceptance_criteria": ["New copy displayed", "Formatting correct", "Mobile responsive"],
+        "dependency_hints": [],
+        "owner_hint": null,
+        "urgency_reason": "",
+        "raw_text": "update the terms of service page with the new legal copy"
+      },
+      {
+        "task": "Add file upload service logging",
+        "description": "Implement structured logging for file upload service to aid debugging",
+        "deadline": 5,
+        "priority": 3,
+        "category": "infrastructure",
+        "tags": ["logging", "debugging"],
+        "acceptance_criteria": ["Logs include file metadata", "Error states logged", "Log aggregation working"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add logging to the file upload service so we can debug issues better"
+      },
+      {
+        "task": "Optimize reports module queries",
+        "description": "Improve performance of slow SQL queries in reporting system",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["performance", "sql"],
+        "acceptance_criteria": ["Query time reduced by 50%", "Indexes added", "No regression in results"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "optimize those heavy SQL queries in the reports module"
+      }
+    ],
+    "events": []
+  },
+  {
+    "scenario_id": "sprint_007",
+    "difficulty": "medium",
+    "transcript": "Planning time. We've got a request from the CEO—she wants a real-time dashboard showing active users. High priority. There's also that annoying pagination bug on the search results page. Let's add webhook support so customers can integrate with their systems. We need to upgrade Redis to the latest version too. And can we finally add the bulk user import feature? Sales has been asking forever. Oh, and fix the broken CSV parsing for special characters.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Isabella Torres",
+        "capacity": 9,
+        "skill": 0.92,
+        "specializations": ["backend", "analytics", "database"]
+      },
+      {
+        "id": "D2",
+        "name": "Liam O'Brien",
+        "capacity": 7,
+        "skill": 0.86,
+        "specializations": ["frontend", "ui", "testing"]
+      },
+      {
+        "id": "D3",
+        "name": "Zara Khan",
+        "capacity": 8,
+        "skill": 0.89,
+        "specializations": ["backend", "infra", "security"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Build real-time active users dashboard",
+        "description": "Create executive dashboard showing live active user count and session data",
+        "deadline": 4,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["dashboard", "analytics"],
+        "acceptance_criteria": ["Updates in real-time", "Accurate user count", "Historical trends shown"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "CEO request",
+        "raw_text": "request from the CEO—she wants a real-time dashboard showing active users"
+      },
+      {
+        "task": "Fix search results pagination bug",
+        "description": "Pagination controls showing incorrect page numbers and breaking on last page",
+        "deadline": 3,
+        "priority": 2,
+        "category": "bugfix",
+        "tags": ["pagination", "frontend"],
+        "acceptance_criteria": ["Page numbers correct", "Navigation works", "Edge cases handled"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "that annoying pagination bug on the search results page"
+      },
+      {
+        "task": "Implement webhook system",
+        "description": "Add webhook support for key events so customers can integrate",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["webhooks", "integration"],
+        "acceptance_criteria": ["Webhooks fire on events", "Retry logic implemented", "Signature verification added"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add webhook support so customers can integrate with their systems"
+      },
+      {
+        "task": "Upgrade Redis to v7",
+        "description": "Update Redis from v5 to v7 for performance and security improvements",
+        "deadline": 8,
+        "priority": 2,
+        "category": "infrastructure",
+        "tags": ["redis", "upgrade"],
+        "acceptance_criteria": ["Redis upgraded", "No data loss", "Performance tested"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "",
+        "raw_text": "upgrade Redis to the latest version"
+      },
+      {
+        "task": "Add bulk user import feature",
+        "description": "Allow admins to import multiple users from CSV file",
+        "deadline": 6,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["import", "admin"],
+        "acceptance_criteria": ["CSV upload working", "Validation errors shown", "Progress indicator displayed"],
+        "dependency_hints": ["Depends on CSV parsing fix"],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "finally add the bulk user import feature? Sales has been asking forever"
+      },
+      {
+        "task": "Fix CSV special character parsing",
+        "description": "CSV parser breaking when encountering special characters like quotes and commas",
+        "deadline": 5,
+        "priority": 2,
+        "category": "bugfix",
+        "tags": ["csv", "parsing"],
+        "acceptance_criteria": ["Special chars handled correctly", "RFC 4180 compliant", "Tests added"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "fix the broken CSV parsing for special characters"
+      }
+    ],
+    "events": [
+      {
+        "day": 6,
+        "type": "add_task",
+        "title": "API rate limit breach",
+        "description": "Major customer hitting rate limits, need emergency increase and monitoring",
+        "payload": {
+          "task": "Increase API rate limits for enterprise",
+          "description": "Adjust rate limiting for enterprise tier and add per-customer overrides",
+          "deadline": 7,
+          "priority": 1,
+          "category": "infrastructure",
+          "tags": ["api", "scaling"],
+          "acceptance_criteria": ["Enterprise limits increased", "Override system working", "Monitoring alerts set"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Major customer impact"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_008",
+    "difficulty": "hard",
+    "transcript": "Big sprint, team. E-commerce site is going live soon. We need the shopping cart persistence—can't lose items on refresh. Also critical: the inventory sync with the warehouse system. Then there's the promo code validation logic—marketing has a campaign launching. We should add product reviews and ratings. Oh, and the image CDN migration needs to happen. There's a bug in the order confirmation emails—they're not including shipping details. We need to implement the wishlist feature too. And let's add Google Analytics tracking. Finally, the mobile checkout is broken on iOS. Let's make it happen.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Aisha Mohammed",
+        "capacity": 8,
+        "skill": 0.9,
+        "specializations": ["frontend", "ui", "testing"]
+      },
+      {
+        "id": "D2",
+        "name": "Max Fischer",
+        "capacity": 9,
+        "skill": 0.94,
+        "specializations": ["backend", "database", "performance"]
+      },
+      {
+        "id": "D3",
+        "name": "Yuki Tanaka",
+        "capacity": 7,
+        "skill": 0.87,
+        "specializations": ["backend", "infra", "devops"]
+      },
+      {
+        "id": "D4",
+        "name": "Olivia Brown",
+        "capacity": 8,
+        "skill": 0.91,
+        "specializations": ["frontend", "analytics", "qa"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Implement cart persistence",
+        "description": "Save shopping cart state to prevent loss on page refresh or session timeout",
+        "deadline": 4,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["cart", "persistence"],
+        "acceptance_criteria": ["Cart survives refresh", "Syncs across devices", "Expired items handled"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Launch blocker",
+        "raw_text": "shopping cart persistence—can't lose items on refresh"
+      },
+      {
+        "task": "Build warehouse inventory sync",
+        "description": "Real-time inventory synchronization with warehouse management system",
+        "deadline": 5,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["inventory", "integration"],
+        "acceptance_criteria": ["Real-time sync working", "Stock levels accurate", "Error handling robust"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Critical for launch",
+        "raw_text": "inventory sync with the warehouse system"
+      },
+      {
+        "task": "Add promo code validation",
+        "description": "Implement promo code system with validation rules and usage limits",
+        "deadline": 3,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["promo", "checkout"],
+        "acceptance_criteria": ["Codes validate correctly", "Limits enforced", "Admin interface ready"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Marketing campaign launching",
+        "raw_text": "promo code validation logic—marketing has a campaign launching"
+      },
+      {
+        "task": "Implement product reviews system",
+        "description": "Add ability for customers to leave reviews and ratings on products",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["reviews", "ugc"],
+        "acceptance_criteria": ["Reviews submitted and displayed", "Rating aggregation works", "Moderation queue exists"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add product reviews and ratings"
+      },
+      {
+        "task": "Migrate images to CDN",
+        "description": "Move product images from local storage to CloudFront CDN",
+        "deadline": 6,
+        "priority": 2,
+        "category": "infrastructure",
+        "tags": ["cdn", "images"],
+        "acceptance_criteria": ["All images on CDN", "URLs updated", "Performance improved"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "",
+        "raw_text": "image CDN migration needs to happen"
+      },
+      {
+        "task": "Fix order confirmation email bug",
+        "description": "Order confirmation emails missing shipping details and tracking info",
+        "deadline": 4,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["email", "orders"],
+        "acceptance_criteria": ["Shipping details included", "Template tested", "All scenarios covered"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Customer confusion",
+        "raw_text": "bug in the order confirmation emails—they're not including shipping details"
+      },
+      {
+        "task": "Build wishlist feature",
+        "description": "Allow users to save products to wishlist for later purchase",
+        "deadline": 9,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["wishlist", "user"],
+        "acceptance_criteria": ["Add/remove from wishlist", "Persists across sessions", "Share functionality"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "implement the wishlist feature"
+      },
+      {
+        "task": "Add Google Analytics tracking",
+        "description": "Implement GA4 tracking for all e-commerce events and funnels",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["analytics", "tracking"],
+        "acceptance_criteria": ["Key events tracked", "Funnels configured", "E-commerce data flowing"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "add Google Analytics tracking"
+      },
+      {
+        "task": "Fix iOS mobile checkout bug",
+        "description": "Checkout flow breaking on iOS Safari during payment step",
+        "deadline": 5,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["mobile", "checkout"],
+        "acceptance_criteria": ["Works on iOS Safari", "Payment step completes", "Cross-device tested"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Blocking mobile purchases",
+        "raw_text": "mobile checkout is broken on iOS"
+      }
+    ],
+    "events": [
+      {
+        "day": 2,
+        "type": "add_task",
+        "title": "PCI compliance audit findings",
+        "description": "Payment form needs security improvements for PCI DSS compliance",
+        "payload": {
+          "task": "Implement PCI DSS compliance fixes",
+          "description": "Address security audit findings in payment processing flow",
+          "deadline": 6,
+          "priority": 1,
+          "category": "security",
+          "tags": ["pci", "compliance"],
+          "acceptance_criteria": ["Audit findings resolved", "Re-audit passed", "Documentation updated"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Compliance requirement"
+        }
+      },
+      {
+        "day": 3,
+        "type": "capacity_change",
+        "title": "Max on jury duty",
+        "description": "Max unavailable days 3-5 for jury duty",
+        "payload": {
+          "developer_id": "D2",
+          "new_capacity": 3,
+          "reason": "Jury duty"
+        }
+      },
+      {
+        "day": 5,
+        "type": "add_task",
+        "title": "Tax calculation errors",
+        "description": "Sales tax computing incorrectly for multi-state orders",
+        "payload": {
+          "task": "Fix sales tax calculation",
+          "description": "Correct tax computation logic for orders shipping across state lines",
+          "deadline": 7,
+          "priority": 1,
+          "category": "bugfix",
+          "tags": ["tax", "checkout"],
+          "acceptance_criteria": ["Tax calculated correctly", "Multi-state orders handled", "Tax API integrated"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Legal compliance"
+        }
+      },
+      {
+        "day": 7,
+        "type": "remove_dependency",
+        "title": "Warehouse API simplified",
+        "description": "Warehouse team simplified their API, no longer needs complex sync",
+        "payload": {
+          "task": "Build warehouse inventory sync",
+          "removed_complexity": "Sync can now be simpler polling instead of webhooks"
+        }
+      },
+      {
+        "day": 8,
+        "type": "add_task",
+        "title": "Load testing revealed bottleneck",
+        "description": "Product search overwhelmed under traffic spike during testing",
+        "payload": {
+          "task": "Optimize product search performance",
+          "description": "Scale search infrastructure to handle 10x traffic",
+          "deadline": 10,
+          "priority": 1,
+          "category": "feature",
+          "tags": ["search", "performance"],
+          "acceptance_criteria": ["Handles 10k req/min", "Response time under 200ms", "Auto-scaling configured"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Launch traffic expectations"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_009",
+    "difficulty": "easy",
+    "transcript": "Sprint planning folks. We've got a simple list. First, fix the broken avatar upload—images aren't saving properly. Then add the 'remember me' checkbox to the login form. We need to update the FAQ page with new support content. Also, let's add audit logging for admin actions—compliance is asking for it. Finally, optimize the homepage load time—it's sluggish. Should be straightforward.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Carlos Ruiz",
+        "capacity": 8,
+        "skill": 0.87,
+        "specializations": ["backend", "security", "database"]
+      },
+      {
+        "id": "D2",
+        "name": "Emma Wilson",
+        "capacity": 9,
+        "skill": 0.9,
+        "specializations": ["frontend", "ui", "performance"]
+      },
+      {
+        "id": "D3",
+        "name": "Dmitri Volkov",
+        "capacity": 7,
+        "skill": 0.84,
+        "specializations": ["backend", "infra", "documentation"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Fix avatar upload bug",
+        "description": "User profile images not persisting after upload due to storage service misconfiguration",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["upload", "images"],
+        "acceptance_criteria": ["Images save correctly", "Error handling improved", "Multiple formats supported"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Broken user feature",
+        "raw_text": "fix the broken avatar upload—images aren't saving properly"
+      },
+      {
+        "task": "Add remember me functionality",
+        "description": "Implement 'remember me' checkbox on login to extend session duration",
+        "deadline": 5,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["auth", "login"],
+        "acceptance_criteria": ["Checkbox functional", "Session extended correctly", "Security reviewed"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "add the 'remember me' checkbox to the login form"
+      },
+      {
+        "task": "Update FAQ page content",
+        "description": "Replace outdated FAQ content with new support articles",
+        "deadline": 6,
+        "priority": 3,
+        "category": "documentation",
+        "tags": ["content", "support"],
+        "acceptance_criteria": ["New content published", "Links working", "Search updated"],
+        "dependency_hints": [],
+        "owner_hint": null,
+        "urgency_reason": "",
+        "raw_text": "update the FAQ page with new support content"
+      },
+      {
+        "task": "Implement admin audit logging",
+        "description": "Log all admin actions for compliance and security auditing",
+        "deadline": 7,
+        "priority": 2,
+        "category": "security",
+        "tags": ["logging", "compliance"],
+        "acceptance_criteria": ["All admin actions logged", "Logs immutable", "Query interface exists"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add audit logging for admin actions—compliance is asking for it"
+      },
+      {
+        "task": "Optimize homepage performance",
+        "description": "Reduce homepage load time from 4s to under 2s",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["performance", "frontend"],
+        "acceptance_criteria": ["Load time under 2s", "Lighthouse score improved", "Images optimized"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "optimize the homepage load time—it's sluggish"
+      }
+    ],
+    "events": []
+  },
+  {
+    "scenario_id": "sprint_010",
+    "difficulty": "medium",
+    "transcript": "Let's plan this sprint. Healthcare app updates. First priority: patient appointment booking system needs to go live. There's a HIPAA compliance issue with how we're logging patient data—legal is nervous. We need to add prescription refill requests. The telemedicine video integration is breaking on Firefox. And we should implement the patient portal dashboard showing upcoming appointments and test results. Also, fix that timezone bug in the appointment scheduler—East Coast patients are seeing wrong times.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Dr. Sarah Chen",
+        "capacity": 8,
+        "skill": 0.93,
+        "specializations": ["backend", "security", "database"]
+      },
+      {
+        "id": "D2",
+        "name": "Marcus Williams",
+        "capacity": 7,
+        "skill": 0.86,
+        "specializations": ["frontend", "ui", "testing"]
+      },
+      {
+        "id": "D3",
+        "name": "Priya Desai",
+        "capacity": 9,
+        "skill": 0.91,
+        "specializations": ["backend", "analytics", "infra"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Launch appointment booking system",
+        "description": "Enable patients to book appointments online with provider availability",
+        "deadline": 6,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["appointments", "booking"],
+        "acceptance_criteria": ["Booking flow complete", "Calendar sync working", "Confirmation emails sent"],
+        "dependency_hints": ["Depends on timezone fix"],
+        "owner_hint": "backend",
+        "urgency_reason": "Product launch requirement",
+        "raw_text": "patient appointment booking system needs to go live"
+      },
+      {
+        "task": "Fix HIPAA logging compliance",
+        "description": "Remove PHI from application logs and implement compliant audit trail",
+        "deadline": 4,
+        "priority": 1,
+        "category": "security",
+        "tags": ["hipaa", "compliance"],
+        "acceptance_criteria": ["No PHI in logs", "Audit trail secure", "Legal sign-off obtained"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Legal compliance risk",
+        "raw_text": "HIPAA compliance issue with how we're logging patient data—legal is nervous"
+      },
+      {
+        "task": "Add prescription refill requests",
+        "description": "Allow patients to request prescription refills through the portal",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["prescriptions", "requests"],
+        "acceptance_criteria": ["Request form working", "Notifications to providers", "History tracked"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add prescription refill requests"
+      },
+      {
+        "task": "Fix Firefox video integration bug",
+        "description": "Telemedicine video calls failing to connect on Firefox browser",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["video", "firefox"],
+        "acceptance_criteria": ["Video works on Firefox", "Cross-browser tested", "Fallback implemented"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Patient experience issue",
+        "raw_text": "telemedicine video integration is breaking on Firefox"
+      },
+      {
+        "task": "Build patient portal dashboard",
+        "description": "Create dashboard showing appointments, test results, and health summary",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["dashboard", "portal"],
+        "acceptance_criteria": ["Dashboard displays data", "Real-time updates", "Mobile responsive"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "implement the patient portal dashboard showing upcoming appointments and test results"
+      },
+      {
+        "task": "Fix appointment timezone bug",
+        "description": "Appointments displaying in wrong timezone for East Coast patients",
+        "deadline": 5,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["timezone", "appointments"],
+        "acceptance_criteria": ["Timezones correct", "DST handled", "All regions tested"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Patient confusion and missed appointments",
+        "raw_text": "timezone bug in the appointment scheduler—East Coast patients are seeing wrong times"
+      }
+    ],
+    "events": [
+      {
+        "day": 5,
+        "type": "add_task",
+        "title": "Emergency prescription data breach",
+        "description": "Potential data exposure in prescription API requires immediate patch",
+        "payload": {
+          "task": "Patch prescription API vulnerability",
+          "description": "Fix authorization bypass allowing access to other patients' prescriptions",
+          "deadline": 6,
+          "priority": 1,
+          "category": "security",
+          "tags": ["security", "api"],
+          "acceptance_criteria": ["Vulnerability patched", "Security audit passed", "Incident reported"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Critical security breach"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_011",
+    "difficulty": "hard",
+    "transcript": "Team, we're building the new learning management system. Top priority: video course player with progress tracking. We need the quiz builder for instructors. Student enrollment workflow with payment integration is critical. Then there's the discussion forum feature. We should add assignment submission with file uploads. Certificate generation when courses complete. The gradebook needs to be built. Also, implement the course recommendation engine. Mobile app needs offline video downloads. And finally, the instructor analytics dashboard showing student engagement. This is our MVP sprint.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Kenji Nakamura",
+        "capacity": 9,
+        "skill": 0.92,
+        "specializations": ["frontend", "ui", "testing"]
+      },
+      {
+        "id": "D2",
+        "name": "Fatima Al-Rashid",
+        "capacity": 8,
+        "skill": 0.95,
+        "specializations": ["backend", "database", "analytics"]
+      },
+      {
+        "id": "D3",
+        "name": "Jake Morrison",
+        "capacity": 7,
+        "skill": 0.88,
+        "specializations": ["backend", "payments", "security"]
+      },
+      {
+        "id": "D4",
+        "name": "Ananya Reddy",
+        "capacity": 8,
+        "skill": 0.9,
+        "specializations": ["frontend", "performance", "devops"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Build video course player",
+        "description": "Create video player with progress tracking and resume functionality",
+        "deadline": 5,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["video", "player"],
+        "acceptance_criteria": ["Video playback smooth", "Progress tracked", "Resume works"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "MVP requirement",
+        "raw_text": "video course player with progress tracking"
+      },
+      {
+        "task": "Create quiz builder tool",
+        "description": "Allow instructors to create quizzes with multiple question types",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["quiz", "assessment"],
+        "acceptance_criteria": ["Multiple question types", "Grading logic works", "Preview mode available"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "quiz builder for instructors"
+      },
+      {
+        "task": "Implement enrollment workflow",
+        "description": "Student course enrollment with Stripe payment integration",
+        "deadline": 4,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["enrollment", "payments"],
+        "acceptance_criteria": ["Enrollment completes", "Payment processed", "Access granted immediately"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "MVP blocker",
+        "raw_text": "Student enrollment workflow with payment integration is critical"
+      },
+      {
+        "task": "Build discussion forum",
+        "description": "Create threaded discussion forum for each course",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["forum", "community"],
+        "acceptance_criteria": ["Threads and replies work", "Moderation tools exist", "Notifications sent"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "discussion forum feature"
+      },
+      {
+        "task": "Add assignment submission system",
+        "description": "Enable students to submit assignments with file uploads and text",
+        "deadline": 6,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["assignments", "uploads"],
+        "acceptance_criteria": ["File uploads work", "Deadline enforcement", "Submission history tracked"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "assignment submission with file uploads"
+      },
+      {
+        "task": "Implement certificate generation",
+        "description": "Auto-generate completion certificates when students finish courses",
+        "deadline": 9,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["certificates", "completion"],
+        "acceptance_criteria": ["Certificates generated", "PDF downloadable", "Verification system works"],
+        "dependency_hints": ["Requires progress tracking"],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "Certificate generation when courses complete"
+      },
+      {
+        "task": "Create gradebook interface",
+        "description": "Build gradebook showing all student scores and assignment grades",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["gradebook", "grading"],
+        "acceptance_criteria": ["Grades calculated correctly", "Export to CSV", "Grade distribution shown"],
+        "dependency_hints": ["Needs quiz and assignment systems"],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "gradebook needs to be built"
+      },
+      {
+        "task": "Build recommendation engine",
+        "description": "Recommend courses to students based on completion history and preferences",
+        "deadline": 10,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["recommendations", "ml"],
+        "acceptance_criteria": ["Recommendations relevant", "Algorithm performs well", "A/B tested"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "course recommendation engine"
+      },
+      {
+        "task": "Add offline video downloads",
+        "description": "Enable mobile app users to download videos for offline viewing",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["mobile", "offline"],
+        "acceptance_criteria": ["Downloads work", "Storage managed", "DRM applied"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Mobile app needs offline video downloads"
+      },
+      {
+        "task": "Build instructor analytics dashboard",
+        "description": "Dashboard showing course engagement, completion rates, and student activity",
+        "deadline": 9,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["analytics", "dashboard"],
+        "acceptance_criteria": ["Key metrics displayed", "Filterable by date", "Export reports"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "instructor analytics dashboard showing student engagement"
+      }
+    ],
+    "events": [
+      {
+        "day": 2,
+        "type": "add_task",
+        "title": "Accessibility audit failure",
+        "description": "Video player fails WCAG 2.1 AA standards, needs immediate fixes",
+        "payload": {
+          "task": "Fix video player accessibility",
+          "description": "Add captions, keyboard controls, and screen reader support to player",
+          "deadline": 4,
+          "priority": 1,
+          "category": "quality",
+          "tags": ["accessibility", "video"],
+          "acceptance_criteria": ["WCAG 2.1 AA compliant", "Keyboard navigation works", "Screen reader tested"],
+          "dependency_hints": [],
+          "owner_hint": "frontend",
+          "urgency_reason": "Legal requirement"
+        }
+      },
+      {
+        "day": 3,
+        "type": "capacity_change",
+        "title": "Jake medical leave",
+        "description": "Jake out on medical leave days 3-8",
+        "payload": {
+          "developer_id": "D3",
+          "new_capacity": 2,
+          "reason": "Medical leave"
+        }
+      },
+      {
+        "day": 6,
+        "type": "add_dependency",
+        "title": "Certificates need gradebook data",
+        "description": "Certificate generation requires final grade from gradebook",
+        "payload": {
+          "task": "Implement certificate generation",
+          "depends_on": "Create gradebook interface",
+          "reason": "Needs final grade calculation"
+        }
+      },
+      {
+        "day": 7,
+        "type": "add_task",
+        "title": "Payment processor outage",
+        "description": "Stripe experiencing issues, need backup payment method",
+        "payload": {
+          "task": "Add PayPal payment option",
+          "description": "Integrate PayPal as backup payment processor",
+          "deadline": 9,
+          "priority": 1,
+          "category": "feature",
+          "tags": ["payments", "integration"],
+          "acceptance_criteria": ["PayPal integration works", "Failover automatic", "Both processors tested"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Payment reliability"
+        }
+      },
+      {
+        "day": 8,
+        "type": "capacity_change",
+        "title": "Ananya promoted to lead",
+        "description": "Ananya taking on lead responsibilities, reduced coding capacity",
+        "payload": {
+          "developer_id": "D4",
+          "new_capacity": 5,
+          "reason": "Additional leadership duties"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_012",
+    "difficulty": "easy",
+    "transcript": "Simple sprint ahead. We need to add email verification for new signups—too many fake accounts. Then fix the broken password strength indicator. Update the cookie consent banner to match new regulations. Add a contact form to the about page. And optimize those N+1 queries in the user dashboard. Nothing blocking, all straightforward work.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Hassan Ibrahim",
+        "capacity": 8,
+        "skill": 0.86,
+        "specializations": ["backend", "auth", "database"]
+      },
+      {
+        "id": "D2",
+        "name": "Sophie Laurent",
+        "capacity": 9,
+        "skill": 0.89,
+        "specializations": ["frontend", "ui", "documentation"]
+      },
+      {
+        "id": "D3",
+        "name": "Ryan Park",
+        "capacity": 7,
+        "skill": 0.91,
+        "specializations": ["backend", "performance", "security"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Implement email verification",
+        "description": "Require new users to verify email before account activation",
+        "deadline": 5,
+        "priority": 1,
+        "category": "security",
+        "tags": ["auth", "email"],
+        "acceptance_criteria": ["Verification emails sent", "Links expire", "Resend option available"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Fake account prevention",
+        "raw_text": "add email verification for new signups—too many fake accounts"
+      },
+      {
+        "task": "Fix password strength indicator",
+        "description": "Password strength meter not updating correctly as user types",
+        "deadline": 3,
+        "priority": 2,
+        "category": "bugfix",
+        "tags": ["frontend", "auth"],
+        "acceptance_criteria": ["Indicator updates live", "Strength calculated correctly", "Visual feedback clear"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "fix the broken password strength indicator"
+      },
+      {
+        "task": "Update cookie consent banner",
+        "description": "Modify cookie banner to comply with updated privacy regulations",
+        "deadline": 6,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["compliance", "privacy"],
+        "acceptance_criteria": ["New copy displayed", "Preferences saved", "Compliant with regs"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Update the cookie consent banner to match new regulations"
+      },
+      {
+        "task": "Add contact form to about page",
+        "description": "Create contact form allowing visitors to send inquiries",
+        "deadline": 7,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["forms", "contact"],
+        "acceptance_criteria": ["Form submits successfully", "Validation working", "Email notifications sent"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Add a contact form to the about page"
+      },
+      {
+        "task": "Fix N+1 queries in dashboard",
+        "description": "Optimize database queries on user dashboard causing slow loads",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["performance", "database"],
+        "acceptance_criteria": ["Queries optimized", "Page load under 1s", "No N+1 patterns remain"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "optimize those N+1 queries in the user dashboard"
+      }
+    ],
+    "events": []
+  },
+  {
+    "scenario_id": "sprint_013",
+    "difficulty": "medium",
+    "transcript": "Sprint planning time. Financial dashboard updates. We need real-time stock price widgets—users are requesting this constantly. There's a rounding error in the tax calculations that accounting found. Let's add CSV export for transaction history. We should implement the budget tracker with category breakdown. And fix the broken OAuth flow with the bank integration. Finally, add multi-currency support—we're expanding internationally.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Monica Singh",
+        "capacity": 9,
+        "skill": 0.94,
+        "specializations": ["backend", "analytics", "data"]
+      },
+      {
+        "id": "D2",
+        "name": "Brett Anderson",
+        "capacity": 8,
+        "skill": 0.87,
+        "specializations": ["frontend", "ui", "testing"]
+      },
+      {
+        "id": "D3",
+        "name": "Yara Nasser",
+        "capacity": 7,
+        "skill": 0.9,
+        "specializations": ["backend", "security", "payments"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Add real-time stock widgets",
+        "description": "Display live stock prices and charts for user-selected tickers",
+        "deadline": 6,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["stocks", "real-time"],
+        "acceptance_criteria": ["Prices update in real-time", "Multiple stocks supported", "Historical charts shown"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "High user demand",
+        "raw_text": "real-time stock price widgets—users are requesting this constantly"
+      },
+      {
+        "task": "Fix tax calculation rounding error",
+        "description": "Tax amounts rounding incorrectly causing penny discrepancies in reports",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["tax", "calculations"],
+        "acceptance_criteria": ["Rounding correct", "Matches accounting rules", "Historical data reconciled"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Financial accuracy issue",
+        "raw_text": "rounding error in the tax calculations that accounting found"
+      },
+      {
+        "task": "Build transaction CSV export",
+        "description": "Allow users to export transaction history as CSV file",
+        "deadline": 5,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["export", "transactions"],
+        "acceptance_criteria": ["CSV format correct", "All fields included", "Date filtering works"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add CSV export for transaction history"
+      },
+      {
+        "task": "Create budget tracker feature",
+        "description": "Budget management tool with category breakdown and spending alerts",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["budgets", "tracking"],
+        "acceptance_criteria": ["Categories customizable", "Alerts trigger correctly", "Visual breakdown shown"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "implement the budget tracker with category breakdown"
+      },
+      {
+        "task": "Fix bank OAuth integration",
+        "description": "OAuth flow with bank API failing at redirect step",
+        "deadline": 4,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["oauth", "integration"],
+        "acceptance_criteria": ["OAuth completes successfully", "Tokens refresh properly", "Error handling robust"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Blocking bank connections",
+        "raw_text": "fix the broken OAuth flow with the bank integration"
+      },
+      {
+        "task": "Implement multi-currency support",
+        "description": "Add support for displaying and converting between multiple currencies",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["currency", "international"],
+        "acceptance_criteria": ["Multiple currencies supported", "Exchange rates updated", "Conversion accurate"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add multi-currency support—we're expanding internationally"
+      }
+    ],
+    "events": [
+      {
+        "day": 5,
+        "type": "add_task",
+        "title": "SEC filing deadline approaching",
+        "description": "Need audit-ready transaction export format for regulatory filing",
+        "payload": {
+          "task": "Create SEC-compliant export format",
+          "description": "Generate transaction exports in SEC-required format",
+          "deadline": 7,
+          "priority": 1,
+          "category": "feature",
+          "tags": ["compliance", "export"],
+          "acceptance_criteria": ["Format matches SEC requirements", "Audit trail complete", "Validated by legal"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Regulatory deadline"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_014",
+    "difficulty": "hard",
+    "transcript": "Major sprint for the logistics platform. Route optimization algorithm needs to go live—that's the core feature. We need the driver mobile app with GPS tracking. Implement the package scanning system with barcode support. Build the customer tracking portal showing real-time delivery status. Add automated dispatch system. We need the warehouse inventory management. Create the delivery proof of concept with photo uploads. Implement the analytics dashboard for fleet management. And add the API for third-party integrations. Finally, build the customer notification system for delivery updates. Let's ship this.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Miguel Santos",
+        "capacity": 9,
+        "skill": 0.93,
+        "specializations": ["backend", "analytics", "performance"]
+      },
+      {
+        "id": "D2",
+        "name": "Lily Chen",
+        "capacity": 8,
+        "skill": 0.91,
+        "specializations": ["frontend", "ui", "testing"]
+      },
+      {
+        "id": "D3",
+        "name": "Omar Khalil",
+        "capacity": 7,
+        "skill": 0.89,
+        "specializations": ["backend", "database", "infra"]
+      },
+      {
+        "id": "D4",
+        "name": "Ingrid Larsson",
+        "capacity": 8,
+        "skill": 0.92,
+        "specializations": ["frontend", "devops", "qa"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Launch route optimization algorithm",
+        "description": "Deploy AI-powered route optimization for delivery efficiency",
+        "deadline": 5,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["routing", "optimization"],
+        "acceptance_criteria": ["Algorithm reduces route time", "Handles constraints", "A/B tested vs baseline"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Core product feature",
+        "raw_text": "Route optimization algorithm needs to go live—that's the core feature"
+      },
+      {
+        "task": "Build driver mobile app",
+        "description": "Create mobile app for drivers with GPS tracking and route guidance",
+        "deadline": 6,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["mobile", "gps"],
+        "acceptance_criteria": ["GPS tracking works", "Routes displayed", "Offline mode functional"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Required for launch",
+        "raw_text": "driver mobile app with GPS tracking"
+      },
+      {
+        "task": "Implement package scanning system",
+        "description": "Barcode and QR code scanning for package tracking throughout delivery",
+        "deadline": 5,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["scanning", "tracking"],
+        "acceptance_criteria": ["Barcode scanning works", "Updates tracking status", "Error handling robust"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Critical for operations",
+        "raw_text": "package scanning system with barcode support"
+      },
+      {
+        "task": "Create customer tracking portal",
+        "description": "Public portal showing real-time package location and delivery ETA",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["tracking", "customer"],
+        "acceptance_criteria": ["Real-time updates shown", "Map visualization works", "ETA accurate"],
+        "dependency_hints": ["Requires GPS tracking"],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "customer tracking portal showing real-time delivery status"
+      },
+      {
+        "task": "Build automated dispatch system",
+        "description": "Automatically assign packages to drivers based on routes and capacity",
+        "deadline": 6,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["dispatch", "automation"],
+        "acceptance_criteria": ["Assignments optimal", "Manual override available", "Load balancing works"],
+        "dependency_hints": ["Depends on route optimization"],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "Add automated dispatch system"
+      },
+      {
+        "task": "Implement warehouse inventory system",
+        "description": "Manage inventory levels, receiving, and stock location tracking",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["inventory", "warehouse"],
+        "acceptance_criteria": ["Stock levels tracked", "Receiving workflow complete", "Location mapping works"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "warehouse inventory management"
+      },
+      {
+        "task": "Create delivery proof system",
+        "description": "Photo upload and signature capture for delivery confirmation",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["proof", "delivery"],
+        "acceptance_criteria": ["Photos uploaded successfully", "Signatures captured", "Stored securely"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "delivery proof of concept with photo uploads"
+      },
+      {
+        "task": "Build fleet analytics dashboard",
+        "description": "Dashboard showing vehicle utilization, fuel costs, and driver performance",
+        "deadline": 9,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["analytics", "fleet"],
+        "acceptance_criteria": ["Key metrics displayed", "Exportable reports", "Real-time data"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "analytics dashboard for fleet management"
+      },
+      {
+        "task": "Create third-party API",
+        "description": "REST API for partners to integrate shipment tracking and creation",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["api", "integration"],
+        "acceptance_criteria": ["API documented", "Authentication working", "Rate limiting applied"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "API for third-party integrations"
+      },
+      {
+        "task": "Build notification system",
+        "description": "Send SMS and email updates to customers on delivery status changes",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["notifications", "customer"],
+        "acceptance_criteria": ["Notifications sent on events", "Templates customizable", "Delivery tracking works"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "customer notification system for delivery updates"
+      }
+    ],
+    "events": [
+      {
+        "day": 2,
+        "type": "add_task",
+        "title": "GPS vendor API changed",
+        "description": "GPS provider deprecated old API, need to migrate immediately",
+        "payload": {
+          "task": "Migrate to new GPS API",
+          "description": "Update GPS tracking to use provider's v3 API",
+          "deadline": 4,
+          "priority": 1,
+          "category": "infrastructure",
+          "tags": ["gps", "migration"],
+          "acceptance_criteria": ["New API integrated", "Tracking uninterrupted", "Backwards compatible"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "API deprecation"
+        }
+      },
+      {
+        "day": 4,
+        "type": "capacity_change",
+        "title": "Lily partial leave",
+        "description": "Lily taking afternoons off for family emergency",
+        "payload": {
+          "developer_id": "D2",
+          "new_capacity": 4,
+          "reason": "Family emergency, half days"
+        }
+      },
+      {
+        "day": 5,
+        "type": "add_dependency",
+        "title": "Dispatch needs route optimization",
+        "description": "Automated dispatch requires route algorithm to function",
+        "payload": {
+          "task": "Build automated dispatch system",
+          "depends_on": "Launch route optimization algorithm",
+          "reason": "Dispatch uses route optimization outputs"
+        }
+      },
+      {
+        "day": 6,
+        "type": "add_task",
+        "title": "Load testing failure",
+        "description": "System crashes at 100 concurrent drivers, need scalability fixes",
+        "payload": {
+          "task": "Scale GPS tracking infrastructure",
+          "description": "Optimize backend to handle 500+ concurrent driver connections",
+          "deadline": 8,
+          "priority": 1,
+          "category": "infrastructure",
+          "tags": ["scaling", "performance"],
+          "acceptance_criteria": ["Handles 500 drivers", "Auto-scaling configured", "Load tested"],
+          "dependency_hints": [],
+          "owner_hint": "devops",
+          "urgency_reason": "Launch capacity requirement"
+        }
+      },
+      {
+        "day": 8,
+        "type": "remove_dependency",
+        "title": "Tracking portal simplified",
+        "description": "Product decided tracking portal can launch with static ETAs first",
+        "payload": {
+          "task": "Create customer tracking portal",
+          "removed_complexity": "Can use estimated ETAs instead of requiring live GPS"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_015",
+    "difficulty": "easy",
+    "transcript": "Quick sprint planning. We need to add password reset via SMS as an option. Fix the broken pagination on the blog listing page. Update the privacy policy with the new data retention language. Add social media share buttons to blog posts. And optimize the search indexing—it's missing recent content. Pretty straightforward, team.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Tariq Mansour",
+        "capacity": 8,
+        "skill": 0.88,
+        "specializations": ["backend", "auth", "security"]
+      },
+      {
+        "id": "D2",
+        "name": "Chloe Dubois",
+        "capacity": 9,
+        "skill": 0.87,
+        "specializations": ["frontend", "ui", "documentation"]
+      },
+      {
+        "id": "D3",
+        "name": "Jamal Washington",
+        "capacity": 7,
+        "skill": 0.9,
+        "specializations": ["backend", "database", "performance"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Add SMS password reset option",
+        "description": "Allow users to reset password via SMS verification code",
+        "deadline": 5,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["auth", "sms"],
+        "acceptance_criteria": ["SMS codes sent", "Verification works", "Fallback to email available"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "add password reset via SMS as an option"
+      },
+      {
+        "task": "Fix blog pagination bug",
+        "description": "Blog listing page pagination controls not advancing past page 2",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["pagination", "blog"],
+        "acceptance_criteria": ["All pages accessible", "Navigation correct", "Query optimized"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Content not discoverable",
+        "raw_text": "Fix the broken pagination on the blog listing page"
+      },
+      {
+        "task": "Update privacy policy content",
+        "description": "Replace privacy policy text with new data retention language from legal",
+        "deadline": 6,
+        "priority": 2,
+        "category": "documentation",
+        "tags": ["legal", "privacy"],
+        "acceptance_criteria": ["New language displayed", "Version dated", "Archive old version"],
+        "dependency_hints": [],
+        "owner_hint": null,
+        "urgency_reason": "",
+        "raw_text": "Update the privacy policy with the new data retention language"
+      },
+      {
+        "task": "Add social share buttons",
+        "description": "Include Twitter, Facebook, LinkedIn share buttons on blog posts",
+        "deadline": 7,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["social", "sharing"],
+        "acceptance_criteria": ["Buttons functional", "Share text customizable", "Analytics tracked"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Add social media share buttons to blog posts"
+      },
+      {
+        "task": "Fix search indexing lag",
+        "description": "Search index not picking up content published in last 24 hours",
+        "deadline": 4,
+        "priority": 2,
+        "category": "bugfix",
+        "tags": ["search", "indexing"],
+        "acceptance_criteria": ["New content indexed immediately", "Reindex successful", "Monitoring added"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "optimize the search indexing—it's missing recent content"
+      }
+    ],
+    "events": []
+  },
+  {
+    "scenario_id": "sprint_016",
+    "difficulty": "medium",
+    "transcript": "DevOps sprint planning. We need to migrate the monolith to microservices—starting with the authentication service. Set up Kubernetes cluster for production. Implement CI/CD pipeline with automated testing. There's a critical SSL certificate renewal that needs automation. Add monitoring and alerting with Prometheus. And we need to configure the disaster recovery backup system. This is infrastructure-heavy but necessary.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Sergei Volkov",
+        "capacity": 9,
+        "skill": 0.95,
+        "specializations": ["backend", "infra", "devops"]
+      },
+      {
+        "id": "D2",
+        "name": "Amara Okonkwo",
+        "capacity": 8,
+        "skill": 0.89,
+        "specializations": ["backend", "security", "database"]
+      },
+      {
+        "id": "D3",
+        "name": "Daniel Kim",
+        "capacity": 7,
+        "skill": 0.91,
+        "specializations": ["backend", "performance", "testing"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Extract auth service from monolith",
+        "description": "Separate authentication logic into independent microservice",
+        "deadline": 7,
+        "priority": 1,
+        "category": "infrastructure",
+        "tags": ["microservices", "refactor"],
+        "acceptance_criteria": ["Service independent", "API documented", "Deployed successfully"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Architecture modernization",
+        "raw_text": "migrate the monolith to microservices—starting with the authentication service"
+      },
+      {
+        "task": "Deploy production Kubernetes cluster",
+        "description": "Set up production-ready K8s cluster with HA configuration",
+        "deadline": 8,
+        "priority": 1,
+        "category": "infrastructure",
+        "tags": ["kubernetes", "deployment"],
+        "acceptance_criteria": ["Cluster operational", "HA configured", "Namespaces set up"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "Required for microservices",
+        "raw_text": "Set up Kubernetes cluster for production"
+      },
+      {
+        "task": "Build CI/CD pipeline",
+        "description": "Implement automated build, test, and deployment pipeline",
+        "deadline": 6,
+        "priority": 2,
+        "category": "infrastructure",
+        "tags": ["cicd", "automation"],
+        "acceptance_criteria": ["Pipeline runs automatically", "Tests integrated", "Deployments automated"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "",
+        "raw_text": "Implement CI/CD pipeline with automated testing"
+      },
+      {
+        "task": "Automate SSL certificate renewal",
+        "description": "Set up automatic SSL certificate renewal with Let's Encrypt",
+        "deadline": 3,
+        "priority": 1,
+        "category": "security",
+        "tags": ["ssl", "automation"],
+        "acceptance_criteria": ["Auto-renewal configured", "Monitoring in place", "Tested successfully"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "Cert expiring soon",
+        "raw_text": "critical SSL certificate renewal that needs automation"
+      },
+      {
+        "task": "Set up Prometheus monitoring",
+        "description": "Deploy Prometheus and Grafana for metrics and alerting",
+        "deadline": 9,
+        "priority": 2,
+        "category": "infrastructure",
+        "tags": ["monitoring", "prometheus"],
+        "acceptance_criteria": ["Metrics collected", "Dashboards created", "Alerts configured"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "",
+        "raw_text": "Add monitoring and alerting with Prometheus"
+      },
+      {
+        "task": "Configure disaster recovery backups",
+        "description": "Implement automated backup system with off-site replication",
+        "deadline": 10,
+        "priority": 2,
+        "category": "infrastructure",
+        "tags": ["backup", "disaster-recovery"],
+        "acceptance_criteria": ["Backups automated", "Restoration tested", "Off-site replication working"],
+        "dependency_hints": [],
+        "owner_hint": "devops",
+        "urgency_reason": "",
+        "raw_text": "configure the disaster recovery backup system"
+      }
+    ],
+    "events": [
+      {
+        "day": 4,
+        "type": "add_task",
+        "title": "Database connection pool exhausted",
+        "description": "Production experiencing connection pool exhaustion under load",
+        "payload": {
+          "task": "Fix database connection pooling",
+          "description": "Optimize connection pool configuration and add connection leak detection",
+          "deadline": 5,
+          "priority": 1,
+          "category": "infrastructure",
+          "tags": ["database", "performance"],
+          "acceptance_criteria": ["Pool configured correctly", "Leaks detected", "Performance stable"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Production stability issue"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_017",
+    "difficulty": "hard",
+    "transcript": "Social media platform sprint. We need the news feed algorithm with engagement-based ranking. User profiles need activity timelines. Implement the messaging system with real-time chat. Add photo and video upload with automatic transcoding. Build the follow/unfollow system and follower counts. We need content moderation with automated flagging. Implement the notification center. Add hashtag and mention parsing. Create the trending topics sidebar. And build the user blocking and reporting system. This is the MVP we've been building toward.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Kayla Robinson",
+        "capacity": 9,
+        "skill": 0.92,
+        "specializations": ["backend", "analytics", "database"]
+      },
+      {
+        "id": "D2",
+        "name": "Ravi Gupta",
+        "capacity": 8,
+        "skill": 0.9,
+        "specializations": ["frontend", "ui", "performance"]
+      },
+      {
+        "id": "D3",
+        "name": "Lucia Fernandez",
+        "capacity": 7,
+        "skill": 0.88,
+        "specializations": ["backend", "infra", "security"]
+      },
+      {
+        "id": "D4",
+        "name": "Ethan Clarke",
+        "capacity": 8,
+        "skill": 0.94,
+        "specializations": ["backend", "testing", "qa"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Build news feed algorithm",
+        "description": "Create engagement-based ranking algorithm for personalized feed",
+        "deadline": 6,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["feed", "algorithm"],
+        "acceptance_criteria": ["Ranking working", "Performance acceptable", "A/B testable"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Core product feature",
+        "raw_text": "news feed algorithm with engagement-based ranking"
+      },
+      {
+        "task": "Create user activity timelines",
+        "description": "Display chronological timeline of user posts and activity on profile",
+        "deadline": 5,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["profile", "timeline"],
+        "acceptance_criteria": ["Timeline displays correctly", "Pagination works", "Privacy respected"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "MVP requirement",
+        "raw_text": "User profiles need activity timelines"
+      },
+      {
+        "task": "Implement real-time messaging",
+        "description": "Build messaging system with WebSocket support for instant chat",
+        "deadline": 7,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["messaging", "real-time"],
+        "acceptance_criteria": ["Messages delivered instantly", "Read receipts work", "Group chats supported"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "User expectation",
+        "raw_text": "messaging system with real-time chat"
+      },
+      {
+        "task": "Add media upload with transcoding",
+        "description": "Support photo and video uploads with automatic format conversion",
+        "deadline": 6,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["media", "upload"],
+        "acceptance_criteria": ["Uploads work", "Transcoding automatic", "Multiple formats supported"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "photo and video upload with automatic transcoding"
+      },
+      {
+        "task": "Build follow system",
+        "description": "Implement following/unfollowing users with accurate follower counts",
+        "deadline": 4,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["social", "following"],
+        "acceptance_criteria": ["Follow/unfollow works", "Counts accurate", "Mutual follows detected"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Core social feature",
+        "raw_text": "follow/unfollow system and follower counts"
+      },
+      {
+        "task": "Implement content moderation",
+        "description": "Automated flagging system for inappropriate content with ML",
+        "deadline": 8,
+        "priority": 2,
+        "category": "security",
+        "tags": ["moderation", "ml"],
+        "acceptance_criteria": ["Auto-flagging works", "Manual review queue", "False positive rate acceptable"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "content moderation with automated flagging"
+      },
+      {
+        "task": "Create notification center",
+        "description": "Build notification system for likes, follows, mentions, and messages",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["notifications", "engagement"],
+        "acceptance_criteria": ["All event types covered", "Real-time updates", "Preferences customizable"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "Implement the notification center"
+      },
+      {
+        "task": "Add hashtag and mention parsing",
+        "description": "Parse and link hashtags and @mentions in posts",
+        "deadline": 5,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["parsing", "hashtags"],
+        "acceptance_criteria": ["Hashtags clickable", "Mentions link to profiles", "Search integration works"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "hashtag and mention parsing"
+      },
+      {
+        "task": "Build trending topics sidebar",
+        "description": "Display trending hashtags and topics based on recent activity",
+        "deadline": 9,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["trending", "discovery"],
+        "acceptance_criteria": ["Trends calculated correctly", "Updates periodically", "Regional filtering works"],
+        "dependency_hints": ["Requires hashtag parsing"],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "trending topics sidebar"
+      },
+      {
+        "task": "Implement blocking and reporting",
+        "description": "Allow users to block others and report inappropriate content",
+        "deadline": 8,
+        "priority": 2,
+        "category": "security",
+        "tags": ["safety", "moderation"],
+        "acceptance_criteria": ["Blocking works bidirectionally", "Reports submitted", "Moderation queue fed"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "user blocking and reporting system"
+      }
+    ],
+    "events": [
+      {
+        "day": 2,
+        "type": "add_task",
+        "title": "COPPA compliance required",
+        "description": "Legal requires age verification before account creation",
+        "payload": {
+          "task": "Add age verification system",
+          "description": "Implement age gate to prevent users under 13 from creating accounts",
+          "deadline": 5,
+          "priority": 1,
+          "category": "security",
+          "tags": ["compliance", "coppa"],
+          "acceptance_criteria": ["Age verification works", "Under-13 blocked", "Legal approved"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Legal compliance"
+        }
+      },
+      {
+        "day": 3,
+        "type": "capacity_change",
+        "title": "Lucia conference travel",
+        "description": "Lucia at security conference days 3-6",
+        "payload": {
+          "developer_id": "D3",
+          "new_capacity": 3,
+          "reason": "Conference attendance"
+        }
+      },
+      {
+        "day": 5,
+        "type": "add_dependency",
+        "title": "Trending needs hashtag system",
+        "description": "Trending topics requires hashtag parsing to be complete",
+        "payload": {
+          "task": "Build trending topics sidebar",
+          "depends_on": "Add hashtag and mention parsing",
+          "reason": "Trends calculated from hashtag usage"
+        }
+      },
+      {
+        "day": 6,
+        "type": "add_task",
+        "title": "CDN costs exploding",
+        "description": "Media storage costs unsustainable, need compression strategy",
+        "payload": {
+          "task": "Implement aggressive image compression",
+          "description": "Add image compression pipeline to reduce storage and bandwidth costs",
+          "deadline": 8,
+          "priority": 1,
+          "category": "infrastructure",
+          "tags": ["optimization", "costs"],
+          "acceptance_criteria": ["Compression implemented", "Quality acceptable", "Costs reduced 60%"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Budget overrun"
+        }
+      },
+      {
+        "day": 7,
+        "type": "capacity_change",
+        "title": "Ethan promoted",
+        "description": "Ethan now managing QA team, reduced coding time",
+        "payload": {
+          "developer_id": "D4",
+          "new_capacity": 5,
+          "reason": "Management responsibilities"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_018",
+    "difficulty": "easy",
+    "transcript": "Simple content updates this sprint. Fix the broken image carousel on the homepage. Add the team bios to the about page. Update the footer links—some are pointing to 404s. Implement lazy loading for images to improve page speed. And add the new testimonials section to the landing page. Clean and straightforward work.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Paolo Rossi",
+        "capacity": 8,
+        "skill": 0.85,
+        "specializations": ["frontend", "ui", "performance"]
+      },
+      {
+        "id": "D2",
+        "name": "Grace Okafor",
+        "capacity": 9,
+        "skill": 0.88,
+        "specializations": ["frontend", "documentation", "testing"]
+      },
+      {
+        "id": "D3",
+        "name": "Sven Andersson",
+        "capacity": 7,
+        "skill": 0.86,
+        "specializations": ["backend", "database", "qa"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Fix homepage carousel bug",
+        "description": "Image carousel not advancing automatically and touch gestures broken",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["carousel", "frontend"],
+        "acceptance_criteria": ["Auto-advance works", "Touch gestures functional", "Cross-browser tested"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Homepage UX issue",
+        "raw_text": "Fix the broken image carousel on the homepage"
+      },
+      {
+        "task": "Add team bios to about page",
+        "description": "Create team member profiles section with photos and bios",
+        "deadline": 6,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["content", "about"],
+        "acceptance_criteria": ["All bios added", "Photos optimized", "Layout responsive"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Add the team bios to the about page"
+      },
+      {
+        "task": "Fix footer broken links",
+        "description": "Update footer navigation links that are returning 404 errors",
+        "deadline": 4,
+        "priority": 2,
+        "category": "bugfix",
+        "tags": ["links", "navigation"],
+        "acceptance_criteria": ["All links working", "Redirects configured", "Tested on all pages"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Update the footer links—some are pointing to 404s"
+      },
+      {
+        "task": "Implement image lazy loading",
+        "description": "Add lazy loading to defer off-screen image loading for performance",
+        "deadline": 7,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["performance", "images"],
+        "acceptance_criteria": ["Lazy loading working", "Page speed improved", "Fallback for old browsers"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "Implement lazy loading for images to improve page speed"
+      },
+      {
+        "task": "Add testimonials section",
+        "description": "Create customer testimonials section on landing page",
+        "deadline": 5,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["testimonials", "landing"],
+        "acceptance_criteria": ["Section displays correctly", "Testimonials rotating", "Mobile responsive"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "",
+        "raw_text": "add the new testimonials section to the landing page"
+      }
+    ],
+    "events": []
+  },
+  {
+    "scenario_id": "sprint_019",
+    "difficulty": "medium",
+    "transcript": "CRM platform sprint. We need the contact management system with custom fields. Implement the sales pipeline with drag-and-drop stages. Add email integration to log conversations. Build the task management for follow-ups. We need reporting on conversion rates. And fix the data import tool—it's corrupting phone numbers. Finally, add the calendar integration for scheduling.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Natasha Ivanova",
+        "capacity": 9,
+        "skill": 0.93,
+        "specializations": ["backend", "database", "analytics"]
+      },
+      {
+        "id": "D2",
+        "name": "Jordan Lee",
+        "capacity": 8,
+        "skill": 0.87,
+        "specializations": ["frontend", "ui", "testing"]
+      },
+      {
+        "id": "D3",
+        "name": "Ibrahim Diallo",
+        "capacity": 7,
+        "skill": 0.9,
+        "specializations": ["backend", "infra", "security"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Build contact management system",
+        "description": "Create contacts database with customizable fields and relationships",
+        "deadline": 6,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["contacts", "crm"],
+        "acceptance_criteria": ["Custom fields configurable", "Search working", "Deduplication logic"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Core CRM feature",
+        "raw_text": "contact management system with custom fields"
+      },
+      {
+        "task": "Implement sales pipeline UI",
+        "description": "Build drag-and-drop kanban board for sales stages",
+        "deadline": 7,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["pipeline", "ui"],
+        "acceptance_criteria": ["Drag-and-drop works", "Stage progression tracked", "Filters functional"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Key sales feature",
+        "raw_text": "sales pipeline with drag-and-drop stages"
+      },
+      {
+        "task": "Add email conversation logging",
+        "description": "Integrate with email to automatically log customer conversations",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["email", "integration"],
+        "acceptance_criteria": ["Emails logged automatically", "Threading preserved", "Attachments stored"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "email integration to log conversations"
+      },
+      {
+        "task": "Create task management system",
+        "description": "Build task creation and tracking for follow-up activities",
+        "deadline": 5,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["tasks", "followup"],
+        "acceptance_criteria": ["Tasks created and assigned", "Due dates enforced", "Reminders sent"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "task management for follow-ups"
+      },
+      {
+        "task": "Build conversion rate reports",
+        "description": "Create analytics dashboard showing pipeline conversion metrics",
+        "deadline": 9,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["analytics", "reporting"],
+        "acceptance_criteria": ["Metrics accurate", "Filterable by date", "Export available"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "reporting on conversion rates"
+      },
+      {
+        "task": "Fix data import phone corruption",
+        "description": "CSV import mangling phone number formats during processing",
+        "deadline": 3,
+        "priority": 1,
+        "category": "bugfix",
+        "tags": ["import", "data"],
+        "acceptance_criteria": ["Phone numbers preserved", "Multiple formats supported", "Validation added"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Data integrity issue",
+        "raw_text": "fix the data import tool—it's corrupting phone numbers"
+      },
+      {
+        "task": "Add calendar integration",
+        "description": "Sync with Google Calendar and Outlook for meeting scheduling",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["calendar", "integration"],
+        "acceptance_criteria": ["Both calendars supported", "Two-way sync works", "Conflict detection"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "calendar integration for scheduling"
+      }
+    ],
+    "events": [
+      {
+        "day": 4,
+        "type": "add_task",
+        "title": "GDPR data export request",
+        "description": "Customer requesting full data export under GDPR rights",
+        "payload": {
+          "task": "Implement GDPR data export",
+          "description": "Build automated system for exporting customer data on request",
+          "deadline": 6,
+          "priority": 1,
+          "category": "security",
+          "tags": ["gdpr", "compliance"],
+          "acceptance_criteria": ["Export includes all data", "Format machine-readable", "Encrypted delivery"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Legal obligation"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "sprint_020",
+    "difficulty": "hard",
+    "transcript": "Final push for the marketplace platform. We need the seller onboarding with identity verification. Build the product listing creation with image uploads. Implement the search with filters and sorting. Add the shopping cart and checkout flow. We need the review and rating system. Implement seller analytics dashboard. Build the dispute resolution system. Add the refund processing workflow. Create the seller payout system with Stripe. And finally, implement the fraud detection for transactions. This gets us to launch.",
+    "developers": [
+      {
+        "id": "D1",
+        "name": "Valentina Costa",
+        "capacity": 9,
+        "skill": 0.94,
+        "specializations": ["backend", "payments", "security"]
+      },
+      {
+        "id": "D2",
+        "name": "Wei Zhang",
+        "capacity": 8,
+        "skill": 0.91,
+        "specializations": ["frontend", "ui", "performance"]
+      },
+      {
+        "id": "D3",
+        "name": "Marcus Thompson",
+        "capacity": 7,
+        "skill": 0.88,
+        "specializations": ["backend", "database", "analytics"]
+      },
+      {
+        "id": "D4",
+        "name": "Leila Abbasi",
+        "capacity": 8,
+        "skill": 0.92,
+        "specializations": ["backend", "infra", "testing"]
+      }
+    ],
+    "items": [
+      {
+        "task": "Build seller onboarding flow",
+        "description": "Create seller registration with identity verification via Stripe",
+        "deadline": 5,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["onboarding", "verification"],
+        "acceptance_criteria": ["KYC verification works", "Business info collected", "Approval workflow functional"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Launch requirement",
+        "raw_text": "seller onboarding with identity verification"
+      },
+      {
+        "task": "Implement product listing creation",
+        "description": "Allow sellers to create listings with photos, descriptions, and pricing",
+        "deadline": 4,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["listings", "products"],
+        "acceptance_criteria": ["Listings created successfully", "Multiple images supported", "Draft saving works"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Core marketplace feature",
+        "raw_text": "product listing creation with image uploads"
+      },
+      {
+        "task": "Build product search system",
+        "description": "Implement search with filters, sorting, and faceted navigation",
+        "deadline": 6,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["search", "discovery"],
+        "acceptance_criteria": ["Search fast and accurate", "Filters work", "Sorting options available"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "Essential for buyers",
+        "raw_text": "search with filters and sorting"
+      },
+      {
+        "task": "Create cart and checkout flow",
+        "description": "Shopping cart with checkout including payment processing",
+        "deadline": 7,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["cart", "checkout"],
+        "acceptance_criteria": ["Cart persists", "Checkout completes", "Multiple payment methods"],
+        "dependency_hints": [],
+        "owner_hint": "frontend",
+        "urgency_reason": "Revenue critical",
+        "raw_text": "shopping cart and checkout flow"
+      },
+      {
+        "task": "Implement review system",
+        "description": "Allow buyers to rate and review purchases and sellers",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["reviews", "ratings"],
+        "acceptance_criteria": ["Reviews submitted", "Ratings aggregated", "Moderation queue exists"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "review and rating system"
+      },
+      {
+        "task": "Build seller analytics dashboard",
+        "description": "Dashboard showing sales, revenue, and performance metrics for sellers",
+        "deadline": 9,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["analytics", "sellers"],
+        "acceptance_criteria": ["Key metrics displayed", "Trends visualized", "Export available"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "seller analytics dashboard"
+      },
+      {
+        "task": "Create dispute resolution system",
+        "description": "Platform for handling buyer-seller disputes with admin mediation",
+        "deadline": 10,
+        "priority": 3,
+        "category": "feature",
+        "tags": ["disputes", "support"],
+        "acceptance_criteria": ["Disputes submitted", "Evidence uploaded", "Admin tools working"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "dispute resolution system"
+      },
+      {
+        "task": "Build refund processing workflow",
+        "description": "Automated refund handling for returns and cancellations",
+        "deadline": 8,
+        "priority": 2,
+        "category": "feature",
+        "tags": ["refunds", "payments"],
+        "acceptance_criteria": ["Refunds processed automatically", "Partial refunds supported", "Notifications sent"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "refund processing workflow"
+      },
+      {
+        "task": "Implement seller payout system",
+        "description": "Automated payouts to sellers via Stripe Connect",
+        "deadline": 7,
+        "priority": 1,
+        "category": "feature",
+        "tags": ["payouts", "stripe"],
+        "acceptance_criteria": ["Payouts scheduled correctly", "Fees calculated", "Payout history tracked"],
+        "dependency_hints": ["Requires seller onboarding"],
+        "owner_hint": "backend",
+        "urgency_reason": "Seller requirement",
+        "raw_text": "seller payout system with Stripe"
+      },
+      {
+        "task": "Add fraud detection system",
+        "description": "Implement transaction monitoring and fraud prevention rules",
+        "deadline": 9,
+        "priority": 2,
+        "category": "security",
+        "tags": ["fraud", "security"],
+        "acceptance_criteria": ["Suspicious transactions flagged", "Velocity checks in place", "Manual review queue"],
+        "dependency_hints": [],
+        "owner_hint": "backend",
+        "urgency_reason": "",
+        "raw_text": "fraud detection for transactions"
+      }
+    ],
+    "events": [
+      {
+        "day": 2,
+        "type": "add_task",
+        "title": "Tax calculation required",
+        "description": "Legal requires automatic sales tax calculation for compliance",
+        "payload": {
+          "task": "Integrate tax calculation API",
+          "description": "Add TaxJar integration for automatic sales tax computation",
+          "deadline": 5,
+          "priority": 1,
+          "category": "feature",
+          "tags": ["tax", "compliance"],
+          "acceptance_criteria": ["Tax calculated correctly", "Jurisdiction detection works", "Remittance reporting available"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Legal compliance"
+        }
+      },
+      {
+        "day": 3,
+        "type": "capacity_change",
+        "title": "Marcus training new hire",
+        "description": "Marcus mentoring new developer, reduced capacity",
+        "payload": {
+          "developer_id": "D3",
+          "new_capacity": 4,
+          "reason": "Onboarding responsibilities"
+        }
+      },
+      {
+        "day": 5,
+        "type": "add_dependency",
+        "title": "Payouts need onboarding complete",
+        "description": "Seller payouts require verified seller accounts",
+        "payload": {
+          "task": "Implement seller payout system",
+          "depends_on": "Build seller onboarding flow",
+          "reason": "Payouts require verified Stripe accounts"
+        }
+      },
+      {
+        "day": 6,
+        "type": "add_task",
+        "title": "Image moderation needed",
+        "description": "Product images containing inappropriate content found in testing",
+        "payload": {
+          "task": "Add image content moderation",
+          "description": "Implement automated image scanning for prohibited content",
+          "deadline": 8,
+          "priority": 1,
+          "category": "security",
+          "tags": ["moderation", "images"],
+          "acceptance_criteria": ["Scanning automatic", "Flagged images quarantined", "Manual review possible"],
+          "dependency_hints": [],
+          "owner_hint": "backend",
+          "urgency_reason": "Platform safety"
+        }
+      },
+      {
+        "day": 8,
+        "type": "capacity_change",
+        "title": "Wei partial availability",
+        "description": "Wei dealing with family emergency, limited hours",
+        "payload": {
+          "developer_id": "D2",
+          "new_capacity": 5,
+          "reason": "Family emergency"
+        }
+      }
+    ]
+  }
+]

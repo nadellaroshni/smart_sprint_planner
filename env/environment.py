@@ -1,62 +1,55 @@
 """
-SprintEnv — Core RL Environment.
-
-Implements the OpenEnv/Gym-compatible interface:
-  reset() → Observation
-  step(Action) → (Observation, reward, done, info)
-  state() → dict
-  render() → str  (human-readable sprint board)
-
-Reward design: DENSE (signal on every step + episode bonuses)
+SprintEnv: core RL environment for sprint planning and re-planning.
 """
 
 from __future__ import annotations
 
 import copy
 import logging
-from typing import Any, Dict, Tuple, Optional
+import random
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Tuple
 
-from .models import (
-    Observation, Action, StepResult, Difficulty,
-    TaskStatus, Priority, SprintMetrics
-)
-from .transcription import transcribe, transcribe_from_text, _fallback_transcript
 from .extraction import extract_tasks
+from .graders import compute_adaptation_reward, compute_episode_bonus, compute_step_reward
 from .jira import create_tickets
-from .tasks import get_developers, get_transcript, get_extracted_items
-from .graders import compute_step_reward, compute_episode_bonus
+from .models import (
+    Action,
+    Developer,
+    Difficulty,
+    EventType,
+    ExtractedItem,
+    Observation,
+    Priority,
+    SprintEvent,
+    SprintMetrics,
+    Task,
+    TaskStatus,
+)
+from .tasks import get_scenario
+from .transcription import transcribe
 
 logger = logging.getLogger(__name__)
 
 
 class SprintEnv:
-    """
-    Smart Sprint Planner RL Environment.
-
-    Simulates an Agile sprint:
-    1. Meeting transcript → transcription
-    2. Transcript → action item extraction (LLM or rule-based)
-    3. Action items → JIRA tickets
-    4. RL agent assigns tickets to developers across sprint days
-    5. Dense reward feedback drives learning
-    """
-
     def __init__(
         self,
         difficulty: Difficulty = Difficulty.MEDIUM,
         max_steps: int = 20,
         use_llm: bool = True,
+        sample_scenarios: bool = False,
+        seed: int = 42,
     ):
         self.difficulty = difficulty
         self.max_steps = max_steps
         self.use_llm = use_llm
-        self.current_step: int = 0
+        self.sample_scenarios = sample_scenarios
+        self.current_step = 0
         self._state: Dict[str, Any] = {}
         self._metrics = SprintMetrics()
-
-    # ------------------------------------------------------------------
-    # Public RL interface
-    # ------------------------------------------------------------------
+        self._next_ticket_num = 1
+        self._rng = random.Random(seed)
 
     def reset(
         self,
@@ -64,109 +57,77 @@ class SprintEnv:
         audio_path: Optional[str] = None,
         transcript_override: Optional[str] = None,
     ) -> Observation:
-        """
-        Reset the environment to the start of a new sprint.
-
-        Priority for transcript source:
-          1. transcript_override (direct text)
-          2. audio_path (Whisper transcription)
-          3. Deterministic transcript for difficulty level
-        """
-        if difficulty:
+        if difficulty is not None:
             self.difficulty = difficulty
 
         self.current_step = 0
         self._metrics = SprintMetrics()
+        self._next_ticket_num = 1
 
-        # --- Transcription ---
+        scenario = get_scenario(self.difficulty, sample=self.sample_scenarios, rng=self._rng)
+
         if transcript_override:
             transcript = transcript_override
         elif audio_path:
             transcript = transcribe(audio_path)
         else:
-            transcript = get_transcript(self.difficulty)
+            transcript = scenario["transcript"]  # type: ignore[assignment]
 
-        # --- Extraction ---
         if self.use_llm:
             try:
                 extracted = extract_tasks(transcript)
             except Exception:
                 logger.warning("LLM extraction failed, using pre-baked items.")
-                extracted = get_extracted_items(self.difficulty)
+                extracted = deepcopy(scenario["items"])  # type: ignore[assignment]
         else:
-            extracted = get_extracted_items(self.difficulty)
+            extracted = deepcopy(scenario["items"])  # type: ignore[assignment]
 
-        # --- JIRA ticket generation ---
         tickets = create_tickets(extracted)
-
-        # --- Developers ---
-        developers = get_developers(self.difficulty)
+        developers = deepcopy(scenario["developers"])  # type: ignore[assignment]
         initial_caps = {d.id: d.capacity for d in developers}
+        event_schedule = sorted(deepcopy(scenario["events"]), key=lambda e: e.day)  # type: ignore[arg-type]
 
         self._state = {
             "meeting_text": transcript,
-            "extracted_items": extracted,
-            "tickets": [t.model_dump() for t in tickets],
-            "developers": [d.model_dump() for d in developers],
+            "extracted_items": [item.model_dump() for item in extracted],
+            "tickets": [ticket.model_dump() for ticket in tickets],
+            "developers": [dev.model_dump() for dev in developers],
             "completed": [],
             "deadline_violations": 0,
             "initial_capacities": initial_caps,
+            "pending_events": [event.model_dump(mode="json") for event in event_schedule],
+            "recent_events": [],
+            "event_history": [],
+            "metrics": self._metrics.model_dump(),
         }
-
-        logger.info(
-            f"SprintEnv reset | difficulty={self.difficulty} | "
-            f"tickets={len(tickets)} | developers={len(developers)}"
-        )
+        self._next_ticket_num = len(tickets) + 1
         return self._get_obs()
 
-    def step(self, action: Action) -> Tuple[Observation, float, bool, Dict]:
-        """
-        Execute one agent action: assign task_id → developer_id.
-
-        Returns (observation, reward, done, info).
-        """
+    def step(self, action: Action) -> Tuple[Observation, float, bool, Dict[str, Any]]:
         self.current_step += 1
+        self._state["recent_events"] = []
         info: Dict[str, Any] = {}
 
-        tickets = self._state["tickets"]
-        developers = self._state["developers"]
+        task = self._find_ticket(action.task_id)
+        dev = self._find_developer(action.developer_id)
 
-        # --- Locate task and developer ---
-        task = next((t for t in tickets if t["id"] == action.task_id), None)
-        dev = next((d for d in developers if d["id"] == action.developer_id), None)
-
-        task_found = task is not None
-        dev_found = dev is not None
-
-        # Early exit: invalid IDs
-        if not task_found or not dev_found:
-            reward, breakdown = compute_step_reward(
-                task_found, dev_found, False, False, False, False, False
-            )
+        if task is None or dev is None:
+            reward, breakdown = compute_step_reward(task is not None, dev is not None, False, False, False, False, False)
             info = {"error": "invalid ids", "breakdown": breakdown}
-            return self._get_obs(), reward, self._is_done(), info
+            return self._finish_step(reward, info)
 
-        # --- Dependency check ---
-        is_blocked = self._has_unresolved_deps(task)
-        if is_blocked:
-            reward, breakdown = compute_step_reward(
-                True, True, True, True, False, False, False
-            )
+        if self._has_unresolved_deps(task):
+            reward, breakdown = compute_step_reward(True, True, True, True, False, False, False)
             task["status"] = TaskStatus.BLOCKED.value
-            info = {"error": f"task {task['id']} is blocked", "breakdown": breakdown}
             self._metrics.tasks_blocked += 1
-            return self._get_obs(), reward, self._is_done(), info
+            info = {"error": f"task {task['id']} is blocked", "breakdown": breakdown}
+            return self._finish_step(reward, info)
 
-        # --- Capacity check ---
-        has_capacity = dev["capacity"] >= task["story_points"]
-        if not has_capacity:
-            reward, breakdown = compute_step_reward(
-                True, True, False, False, False, False, False
-            )
+        if dev["capacity"] < task["story_points"]:
+            reward, breakdown = compute_step_reward(True, True, False, False, False, False, False)
             info = {"error": "insufficient capacity", "breakdown": breakdown}
-            return self._get_obs(), reward, self._is_done(), info
+            return self._finish_step(reward, info)
 
-        # --- Execute assignment ---
         on_time = task["deadline"] >= self.current_step
         skill_match = self._skill_matches(dev, task)
         is_high_priority = task["priority"] >= Priority.HIGH.value
@@ -177,18 +138,27 @@ class SprintEnv:
         task["assigned_to"] = dev["id"]
 
         self._state["completed"].append(copy.deepcopy(task))
-        tickets.remove(task)
+        self._state["tickets"].remove(task)
+        self._metrics.tasks_completed += 1
 
         if not on_time:
             self._state["deadline_violations"] += 1
             self._metrics.tasks_failed_deadline += 1
 
-        self._metrics.tasks_completed += 1
-
-        reward, breakdown = compute_step_reward(
-            True, True, True, False, on_time, skill_match, is_high_priority
+        reward, breakdown = compute_step_reward(True, True, True, False, on_time, skill_match, is_high_priority)
+        adaptation_reward, adaptation_breakdown = compute_adaptation_reward(
+            task=task,
+            recent_events=self._state.get("recent_events", []),
+            pending_events=self._state.get("pending_events", []),
+            on_time=on_time,
         )
-        self._metrics.total_reward += reward
+        reward += adaptation_reward
+        breakdown.update(adaptation_breakdown)
+
+        if task.get("source_event"):
+            self._metrics.disruption_tasks_completed += 1
+        if self._metrics.disruptions_applied > 0:
+            self._metrics.recovery_actions += 1
 
         info = {
             "task": task["id"],
@@ -197,110 +167,217 @@ class SprintEnv:
             "skill_match": skill_match,
             "reward_breakdown": breakdown,
         }
-        logger.debug(
-            f"Step {self.current_step}: {task['id']} → {dev['id']} | "
-            f"reward={reward:.2f} | on_time={on_time}"
+        return self._finish_step(reward, info)
+
+    def state(self) -> Dict[str, Any]:
+        self._state["metrics"] = self._metrics.model_dump()
+        return self._state
+
+    def render(self) -> str:
+        lines = [
+            f"\n{'=' * 60}",
+            f"  SPRINT BOARD - Day {self.current_step} / {self.max_steps}",
+            f"  Difficulty: {self.difficulty}",
+            f"{'=' * 60}",
+            f"  BACKLOG ({len(self._state['tickets'])} tasks):",
+        ]
+
+        for task in self._state["tickets"]:
+            deps = f" [blocked by: {task['dependencies']}]" if task.get("dependencies") else ""
+            source = " [event]" if task.get("source_event") else ""
+            lines.append(
+                f"    [{task['id']}] {task['title'][:40]} | P{task['priority']} | "
+                f"{task['story_points']}sp | day {task['deadline']}{deps}{source}"
+            )
+
+        lines.append(f"\n  COMPLETED ({len(self._state['completed'])} tasks):")
+        for task in self._state["completed"]:
+            source = " [event]" if task.get("source_event") else ""
+            lines.append(f"    [done] [{task['id']}] {task['title'][:40]} -> {task.get('assigned_to', '?')}{source}")
+
+        lines.append("\n  DEVELOPERS:")
+        for dev in self._state["developers"]:
+            initial = self._state["initial_capacities"].get(dev["id"], dev["capacity"])
+            used = initial - dev["capacity"]
+            bar = "#" * used + "." * dev["capacity"]
+            lines.append(f"    {dev['id']} {dev['name']}: [{bar}] {used}/{initial}sp")
+
+        if self._state.get("recent_events"):
+            lines.append("\n  RECENT EVENTS:")
+            for event in self._state["recent_events"]:
+                lines.append(f"    ! Day {event['day']}: {event['title']} ({event['type']})")
+
+        lines.append(
+            f"\n  Metrics: completed={self._metrics.tasks_completed} | "
+            f"violations={self._state.get('deadline_violations', 0)} | "
+            f"disruptions={self._metrics.disruptions_applied} | "
+            f"reward={self._metrics.total_reward:.2f}"
         )
+        lines.append("=" * 60)
+        return "\n".join(lines)
+
+    def _finish_step(self, reward: float, info: Dict[str, Any]) -> Tuple[Observation, float, bool, Dict[str, Any]]:
+        applied_events = self._apply_scheduled_events()
+        if applied_events:
+            info["events"] = applied_events
+        self._metrics.total_reward += reward
+        self._state["metrics"] = self._metrics.model_dump()
 
         done = self._is_done()
-
-        # Episode end bonus
         if done:
-            bonus, bonus_breakdown = compute_episode_bonus(
-                self._state, self.max_steps, self.current_step
-            )
+            bonus, bonus_breakdown = compute_episode_bonus(self._state, self.max_steps, self.current_step)
             reward += bonus
             self._metrics.total_reward += bonus
+            self._state["metrics"] = self._metrics.model_dump()
             info["episode_bonus"] = bonus
             info["bonus_breakdown"] = bonus_breakdown
             self._log_episode_summary()
 
         return self._get_obs(), reward, done, info
 
-    def state(self) -> Dict[str, Any]:
-        return self._state
-
-    def render(self) -> str:
-        """Human-readable sprint board (for logging / debugging)."""
-        lines = [
-            f"\n{'=' * 60}",
-            f"  SPRINT BOARD — Day {self.current_step} / {self.max_steps}",
-            f"  Difficulty: {self.difficulty}",
-            f"{'=' * 60}",
-            f"  BACKLOG ({len(self._state['tickets'])} tasks):",
-        ]
-        for t in self._state["tickets"]:
-            deps = f" [blocked by: {t['dependencies']}]" if t.get("dependencies") else ""
-            lines.append(
-                f"    [{t['id']}] {t['title'][:40]} | "
-                f"P{t['priority']} | {t['story_points']}sp | day {t['deadline']}{deps}"
-            )
-
-        lines.append(f"\n  COMPLETED ({len(self._state['completed'])} tasks):")
-        for t in self._state["completed"]:
-            lines.append(f"    ✓ [{t['id']}] {t['title'][:40]} → {t.get('assigned_to', '?')}")
-
-        lines.append(f"\n  DEVELOPERS:")
-        for d in self._state["developers"]:
-            initial = self._state["initial_capacities"].get(d["id"], d["capacity"])
-            used = initial - d["capacity"]
-            bar = "█" * used + "░" * d["capacity"]
-            lines.append(f"    {d['id']} {d['name']}: [{bar}] {used}/{initial}sp")
-
-        lines.append(
-            f"\n  Metrics: completed={self._metrics.tasks_completed} | "
-            f"violations={self._state.get('deadline_violations', 0)} | "
-            f"total_reward={self._metrics.total_reward:.2f}"
-        )
-        lines.append("=" * 60)
-        return "\n".join(lines)
-
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
     def _get_obs(self) -> Observation:
-        from .models import Task, Developer, ExtractedItem
         return Observation(
             meeting_text=self._state["meeting_text"],
-            extracted_items=[
-                ExtractedItem(**i) if isinstance(i, dict) else i
-                for i in self._state["extracted_items"]
-            ],
-            jira_tickets=[
-                Task(**t) if isinstance(t, dict) else t
-                for t in self._state["tickets"]
-            ],
-            developers=[
-                Developer(**d) if isinstance(d, dict) else d
-                for d in self._state["developers"]
-            ],
+            extracted_items=[ExtractedItem(**item) for item in self._state["extracted_items"]],
+            jira_tickets=[Task(**ticket) for ticket in self._state["tickets"]],
+            developers=[Developer(**dev) for dev in self._state["developers"]],
+            completed_task_ids=[task["id"] for task in self._state["completed"]],
             sprint_day=self.current_step,
             metrics=self._metrics,
             difficulty=self.difficulty,
+            recent_events=[SprintEvent(**event) for event in self._state.get("recent_events", [])],
         )
 
     def _is_done(self) -> bool:
-        return (
-            len(self._state["tickets"]) == 0
-            or self.current_step >= self.max_steps
-        )
+        if len(self._state["tickets"]) == 0 or self.current_step >= self.max_steps:
+            return True
+        if not self._has_feasible_action() and not self._state.get("pending_events"):
+            return True
+        return False
 
     def _has_unresolved_deps(self, task: dict) -> bool:
-        completed_ids = {t["id"] for t in self._state["completed"]}
+        completed_ids = {item["id"] for item in self._state["completed"]}
         return any(dep not in completed_ids for dep in task.get("dependencies", []))
 
+    def _has_feasible_action(self) -> bool:
+        for task in self._state.get("tickets", []):
+            if self._has_unresolved_deps(task):
+                continue
+            for dev in self._state.get("developers", []):
+                if dev["capacity"] >= task["story_points"]:
+                    return True
+        return False
+
     def _skill_matches(self, dev: dict, task: dict) -> bool:
-        dev_skills = set(dev.get("specializations", []))
-        task_tags = set(task.get("tags", []))
-        return bool(dev_skills & task_tags)
+        return bool(set(dev.get("specializations", [])) & set(task.get("tags", [])))
+
+    def _apply_scheduled_events(self) -> List[Dict[str, Any]]:
+        pending = self._state.get("pending_events", [])
+        today = [event for event in pending if event["day"] == self.current_step]
+        if not today:
+            return []
+
+        self._state["pending_events"] = [event for event in pending if event["day"] != self.current_step]
+        applied: List[Dict[str, Any]] = []
+        for raw_event in today:
+            event = SprintEvent(**raw_event)
+            applied.append(self._apply_event(event))
+
+        self._state["recent_events"] = applied
+        self._state["event_history"].extend(applied)
+        self._metrics.disruptions_applied += len(applied)
+        self._state["metrics"] = self._metrics.model_dump()
+        return applied
+
+    def _apply_event(self, event: SprintEvent) -> Dict[str, Any]:
+        result = event.model_dump(mode="json")
+        result["applied"] = True
+
+        if event.type == EventType.ADD_TASK:
+            task_payload = event.payload.get("task")
+            if isinstance(task_payload, dict):
+                extracted_data = task_payload
+            else:
+                extracted_data = event.payload
+            extracted = ExtractedItem(**extracted_data)
+            new_ticket = create_tickets([extracted])[0]
+            ticket_payload = new_ticket.model_dump()
+            ticket_payload["id"] = f"T{self._next_ticket_num:03d}"
+            ticket_payload["source_event"] = event.title
+            self._next_ticket_num += 1
+            self._state["tickets"].append(ticket_payload)
+            self._state["extracted_items"].append(extracted.model_dump())
+            self._metrics.disruption_tasks_added += 1
+            result["task_id"] = ticket_payload["id"]
+
+        elif event.type == EventType.CAPACITY_CHANGE:
+            dev = self._find_developer(event.payload.get("developer_id"))
+            if dev is None:
+                result["applied"] = False
+                result["reason"] = "developer_not_found"
+            else:
+                initial = self._state["initial_capacities"].get(dev["id"], dev["capacity"])
+                if "new_capacity" in event.payload:
+                    dev["capacity"] = max(0, min(initial, int(event.payload.get("new_capacity", dev["capacity"]))))
+                else:
+                    delta = int(event.payload.get("capacity_delta", 0))
+                    dev["capacity"] = max(0, min(initial, dev["capacity"] + delta))
+                result["new_capacity"] = dev["capacity"]
+
+        elif event.type == EventType.ADD_DEPENDENCY:
+            task = self._find_ticket(event.payload.get("task_id")) or self._find_ticket_by_title(event.payload.get("task"))
+            depends_on_raw = event.payload.get("depends_on")
+            depends_on = self._resolve_task_reference(depends_on_raw)
+            if task is None or not depends_on:
+                result["applied"] = False
+                result["reason"] = "task_or_dependency_missing"
+            elif depends_on not in task["dependencies"]:
+                task["dependencies"].append(depends_on)
+
+        elif event.type == EventType.REMOVE_DEPENDENCY:
+            task = self._find_ticket(event.payload.get("task_id")) or self._find_ticket_by_title(event.payload.get("task"))
+            depends_on = self._resolve_task_reference(event.payload.get("depends_on"))
+            if task is None or not depends_on:
+                result["applied"] = False
+                result["reason"] = "task_or_dependency_missing"
+            else:
+                task["dependencies"] = [dep for dep in task["dependencies"] if dep != depends_on]
+
+        logger.info(
+            f"Applied event on day {event.day}: {event.title} | type={event.type.value} | applied={result['applied']}"
+        )
+        return result
+
+    def _find_ticket(self, task_id: Optional[str]) -> Optional[Dict[str, Any]]:
+        if task_id is None:
+            return None
+        return next((ticket for ticket in self._state.get("tickets", []) if ticket["id"] == task_id), None)
+
+    def _find_ticket_by_title(self, title: Optional[str]) -> Optional[Dict[str, Any]]:
+        if title is None:
+            return None
+        title_lower = str(title).strip().lower()
+        return next((ticket for ticket in self._state.get("tickets", []) if ticket["title"].strip().lower() == title_lower), None)
+
+    def _resolve_task_reference(self, ref: Optional[str]) -> Optional[str]:
+        if ref is None:
+            return None
+        if isinstance(ref, str) and ref.startswith("T"):
+            return ref
+        ticket = self._find_ticket_by_title(ref)
+        return ticket["id"] if ticket is not None else None
+
+    def _find_developer(self, developer_id: Optional[str]) -> Optional[Dict[str, Any]]:
+        if developer_id is None:
+            return None
+        return next((dev for dev in self._state.get("developers", []) if dev["id"] == developer_id), None)
 
     def _log_episode_summary(self) -> None:
         completed = len(self._state["completed"])
         total = completed + len(self._state["tickets"])
-        violations = self._state.get("deadline_violations", 0)
         logger.info(
             f"Episode complete | {completed}/{total} tasks | "
-            f"{violations} deadline violations | "
-            f"total_reward={self._metrics.total_reward:.2f}"
+            f"violations={self._state.get('deadline_violations', 0)} | "
+            f"disruptions={self._metrics.disruptions_applied} | "
+            f"reward={self._metrics.total_reward:.2f}"
         )

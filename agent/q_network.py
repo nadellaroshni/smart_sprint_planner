@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 # ── Action embedding size ────────────────────────────────────────────────────
 # We encode (task_idx, dev_idx) as a 2-value normalised pair
 ACTION_DIM = 2
-INPUT_DIM  = FEATURE_DIM + ACTION_DIM     # 155 + 2 = 157
+INPUT_DIM  = FEATURE_DIM + ACTION_DIM     # 157 + 2 = 159
 
 
 # ── Activation helpers ────────────────────────────────────────────────────────

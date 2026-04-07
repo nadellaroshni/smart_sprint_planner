@@ -1,135 +1,192 @@
 """
-Task set generators for Easy / Medium / Hard difficulty levels.
+Scenario loading utilities.
 
-Hard tasks include:
-- Dependency chains
-- Tight deadlines
-- Noisy/ambiguous transcripts
-- Developer skill mismatches
+Priority order:
+  1. dataset.json scenarios, when present
+  2. built-in fallback scenarios
+
+For stability, deterministic calls use the first scenario for each difficulty.
+Training can request sampled scenarios to use the full dataset.
 """
 
 from __future__ import annotations
 
-from typing import List, Tuple
+import json
+import random
+from copy import deepcopy
+from pathlib import Path
+from typing import Dict, List, Optional
 
-from .models import Developer, ExtractedItem, Difficulty
+from .models import Developer, Difficulty, EventType, ExtractedItem, SprintEvent
 
-
-# ---------------------------------------------------------------------------
-# Developer pools
-# ---------------------------------------------------------------------------
-
-def get_developers(difficulty: Difficulty) -> List[Developer]:
-    if difficulty == Difficulty.EASY:
-        return [
-            Developer(id="D1", name="Alice", capacity=10, skill=1.0,
-                      specializations=["backend", "auth"]),
-            Developer(id="D2", name="Bob", capacity=10, skill=1.0,
-                      specializations=["frontend", "testing"]),
-            Developer(id="D3", name="Carol", capacity=10, skill=1.0,
-                      specializations=["devops", "infra"]),
-        ]
-    elif difficulty == Difficulty.MEDIUM:
-        return [
-            Developer(id="D1", name="Alice", capacity=8, skill=0.9,
-                      specializations=["backend", "auth", "database"]),
-            Developer(id="D2", name="Bob", capacity=6, skill=0.8,
-                      specializations=["frontend", "analytics"]),
-            Developer(id="D3", name="Carol", capacity=7, skill=0.85,
-                      specializations=["devops", "infra", "testing"]),
-        ]
-    else:  # HARD
-        return [
-            Developer(id="D1", name="Alice", capacity=5, skill=0.7,
-                      specializations=["backend"]),
-            Developer(id="D2", name="Bob", capacity=4, skill=0.6,
-                      specializations=["frontend"]),
-            Developer(id="D3", name="Carol", capacity=6, skill=0.8,
-                      specializations=["devops"]),
-            Developer(id="D4", name="Dave", capacity=3, skill=0.5,
-                      specializations=["testing"]),  # bottleneck dev
-        ]
+DATASET_PATH = Path("dataset.json")
 
 
-# ---------------------------------------------------------------------------
-# Transcript generators
-# ---------------------------------------------------------------------------
-
-def get_transcript(difficulty: Difficulty) -> str:
-    if difficulty == Difficulty.EASY:
-        return (
-            "Team, clear priorities this sprint. "
-            "Implement the user login page — medium priority, due by day 5. "
-            "Add unit tests for the auth module — low priority, day 7. "
-            "Fix the CSS bug on the homepage — quick fix, day 2. "
-            "Set up GitHub Actions CI pipeline — medium priority, day 6."
-        )
-
-    elif difficulty == Difficulty.MEDIUM:
-        return (
-            "Alright everyone, here's our sprint plan. "
-            "First, implement OAuth2 login with Google SSO — high priority, blocks the client demo on day 5. "
-            "Second, the payment bug is intermittently failing transactions — P0, must fix within 2 days. "
-            "Third, build the analytics dashboard with charts — medium priority, day 7. "
-            "Fourth, migrate the user table to PostgreSQL — high priority, 8 story points, due day 6. "
-            "Fifth, write integration tests for the auth module — low priority, day 8. "
-            "Sixth, configure the CI/CD pipeline — medium priority, day 5. "
-            "Also fix avatar loading bug on profile page — quick, day 3."
-        )
-
-    else:  # HARD: noisy, ambiguous, tight deadlines, dependencies
-        return (
-            "Ok so uh, we really need to get moving. The payment thing is broken again — "
-            "yesterday it was throwing 500 errors on checkout, someone needs to jump on that today or tomorrow max. "
-            "Also the entire auth system needs to be redone because apparently the token refresh is leaking memory, "
-            "and the client is breathing down our necks about the SSO feature — "
-            "that was supposed to be done last sprint. That's blocking the onboarding flow. "
-            "On the frontend side — the dashboard is loading for like 8 seconds, "
-            "charts aren't rendering on Safari, and the mobile layout is completely broken on iOS 17. "
-            "The database migration from MySQL to Postgres is halfway done, someone left it mid-sprint, "
-            "we need that done by day 4 otherwise the API endpoints won't work. "
-            "DevOps needs to finish the Kubernetes setup — we can't deploy anything right now without it. "
-            "Also QA keeps complaining there are zero tests, we need at least 80% coverage on auth. "
-            "And someone needs to write the API documentation, the integration partners are waiting. "
-            "Oh and the file upload feature — we promised that to the client for end of sprint, day 10."
-        )
+def _fallback_easy() -> Dict[str, object]:
+    return {
+        "transcript": (
+            "This sprint is intentionally stable. We have a fixed backlog, fixed team "
+            "capacity, and no expected mid-sprint surprises."
+        ),
+        "developers": [
+            Developer(id="D1", name="Alice", capacity=9, skill=0.95, specializations=["backend", "auth", "payments"]),
+            Developer(id="D2", name="Bob", capacity=8, skill=0.90, specializations=["frontend", "analytics", "ui"]),
+            Developer(id="D3", name="Carol", capacity=8, skill=0.88, specializations=["testing", "infra", "ci"]),
+        ],
+        "items": [
+            ExtractedItem(task="Fix checkout form validation bug", deadline=2, priority=3, tags=["bug", "frontend"]),
+            ExtractedItem(task="Implement weekly analytics summary export", deadline=5, priority=3, tags=["backend", "analytics"]),
+            ExtractedItem(task="Refresh profile page layout", deadline=6, priority=2, tags=["frontend", "ui"]),
+            ExtractedItem(task="Add regression tests for auth login flow", deadline=7, priority=2, tags=["testing", "auth"]),
+            ExtractedItem(task="Stabilize CI pipeline for pull requests", deadline=6, priority=2, tags=["infra", "ci"]),
+        ],
+        "events": [],
+    }
 
 
-# ---------------------------------------------------------------------------
-# Pre-baked extracted items (for determinism without LLM)
-# ---------------------------------------------------------------------------
+def _fallback_medium() -> Dict[str, object]:
+    return {
+        "transcript": (
+            "Start with a normal sprint plan using the current backlog and team capacity. "
+            "One disruption is expected mid-sprint."
+        ),
+        "developers": [
+            Developer(id="D1", name="Alice", capacity=8, skill=0.92, specializations=["backend", "auth", "database"]),
+            Developer(id="D2", name="Bob", capacity=7, skill=0.86, specializations=["frontend", "analytics", "ui"]),
+            Developer(id="D3", name="Carol", capacity=7, skill=0.87, specializations=["testing", "infra", "ci"]),
+        ],
+        "items": [
+            ExtractedItem(task="Fix payment retry bug on checkout", deadline=2, priority=4, tags=["bug", "payments", "backend"]),
+            ExtractedItem(task="Implement release health dashboard", deadline=5, priority=3, tags=["frontend", "analytics"]),
+            ExtractedItem(task="Migrate audit logs to PostgreSQL", deadline=6, priority=3, tags=["backend", "database", "infra"]),
+            ExtractedItem(task="Add integration tests for billing flow", deadline=7, priority=2, tags=["testing", "backend"]),
+            ExtractedItem(task="Harden GitHub Actions deployment checks", deadline=6, priority=2, tags=["infra", "ci"]),
+        ],
+        "events": [
+            SprintEvent(
+                day=3,
+                type=EventType.ADD_TASK,
+                title="Urgent production bug arrives",
+                description="A new P0 issue is reported mid-sprint and must be absorbed into the plan.",
+                payload={
+                    "task": {
+                        "task": "Hotfix invoice generation failure for enterprise accounts",
+                        "deadline": 4,
+                        "priority": 4,
+                        "tags": ["bug", "backend", "payments"],
+                        "raw_text": "Urgent bug added during sprint after invoice generation started failing in production.",
+                    }
+                },
+            )
+        ],
+    }
 
-def get_extracted_items(difficulty: Difficulty) -> List[ExtractedItem]:
-    if difficulty == Difficulty.EASY:
-        return [
-            ExtractedItem(task="Implement user login page", deadline=5, priority=2, tags=["frontend", "auth"]),
-            ExtractedItem(task="Add unit tests for auth module", deadline=7, priority=1, tags=["testing", "auth"]),
-            ExtractedItem(task="Fix CSS bug on homepage", deadline=2, priority=2, tags=["bug", "frontend"]),
-            ExtractedItem(task="Setup GitHub Actions CI pipeline", deadline=6, priority=2, tags=["infra", "ci"]),
-        ]
 
-    elif difficulty == Difficulty.MEDIUM:
-        return [
-            ExtractedItem(task="Implement OAuth2 login with Google SSO", deadline=5, priority=3, tags=["auth", "backend", "feature"]),
-            ExtractedItem(task="Fix intermittent payment processing bug", deadline=2, priority=4, tags=["bug", "payments", "backend"]),
-            ExtractedItem(task="Build analytics dashboard with charts", deadline=7, priority=2, tags=["frontend", "analytics"]),
-            ExtractedItem(task="Migrate user table to PostgreSQL", deadline=6, priority=3, tags=["backend", "database", "infra"]),
-            ExtractedItem(task="Write integration tests for auth module", deadline=8, priority=1, tags=["testing", "auth"]),
-            ExtractedItem(task="Configure CI/CD pipeline", deadline=5, priority=2, tags=["infra", "ci"]),
-            ExtractedItem(task="Fix avatar loading bug on profile page", deadline=3, priority=2, tags=["bug", "frontend"]),
-        ]
+def _fallback_hard() -> Dict[str, object]:
+    return {
+        "transcript": (
+            "This sprint will not stay stable. Expect repeated replanning because capacity, "
+            "dependencies, and incoming work will all change."
+        ),
+        "developers": [
+            Developer(id="D1", name="Alice", capacity=7, skill=0.88, specializations=["backend", "auth", "payments"]),
+            Developer(id="D2", name="Bob", capacity=6, skill=0.80, specializations=["frontend", "analytics", "ui"]),
+            Developer(id="D3", name="Carol", capacity=6, skill=0.83, specializations=["infra", "database", "devops"]),
+            Developer(id="D4", name="Dave", capacity=5, skill=0.78, specializations=["testing", "qa", "ci"]),
+        ],
+        "items": [
+            ExtractedItem(task="Fix token refresh failures in auth gateway", deadline=2, priority=4, tags=["bug", "auth", "backend"]),
+            ExtractedItem(task="Implement partner onboarding SSO flow", deadline=4, priority=4, tags=["auth", "feature", "backend"]),
+            ExtractedItem(task="Build operations command dashboard", deadline=5, priority=3, tags=["frontend", "analytics"]),
+            ExtractedItem(task="Complete PostgreSQL migration for tenant data", deadline=4, priority=4, tags=["backend", "database", "infra"]),
+            ExtractedItem(task="Improve mobile layout for customer portal", deadline=6, priority=2, tags=["frontend", "ui"]),
+            ExtractedItem(task="Raise auth regression coverage to 80 percent", deadline=6, priority=3, tags=["testing", "auth"]),
+            ExtractedItem(task="Stabilize deployment pipeline rollback checks", deadline=5, priority=3, tags=["infra", "ci"]),
+        ],
+        "events": [
+            SprintEvent(day=2, type=EventType.CAPACITY_CHANGE, title="Alice becomes partially unavailable", description="Backend capacity drops.", payload={"developer_id": "D1", "capacity_delta": -3}),
+            SprintEvent(day=3, type=EventType.ADD_TASK, title="Urgent security hotfix added", description="A new exploit forces immediate work.", payload={"task": {"task": "Patch privilege escalation in admin API", "deadline": 4, "priority": 4, "tags": ["bug", "backend", "auth"], "raw_text": "Security escalation bug added mid-sprint."}}),
+            SprintEvent(day=4, type=EventType.ADD_DEPENDENCY, title="Dashboard now depends on SSO completion", description="Product clarifies a new blocker.", payload={"task_id": "T003", "depends_on": "T002"}),
+            SprintEvent(day=5, type=EventType.CAPACITY_CHANGE, title="QA bandwidth shrinks", description="Shared testing support is reduced.", payload={"developer_id": "D4", "capacity_delta": -2}),
+        ],
+    }
 
-    else:  # HARD
-        return [
-            ExtractedItem(task="Fix payment 500 errors on checkout", deadline=2, priority=4, tags=["bug", "payments", "backend"]),
-            ExtractedItem(task="Fix token refresh memory leak in auth system", deadline=3, priority=4, tags=["bug", "auth", "backend"]),
-            ExtractedItem(task="Implement SSO feature for onboarding flow", deadline=4, priority=4, tags=["auth", "feature", "backend"]),
-            ExtractedItem(task="Fix dashboard 8s load time performance", deadline=5, priority=3, tags=["frontend", "performance"]),
-            ExtractedItem(task="Fix chart rendering on Safari", deadline=5, priority=3, tags=["bug", "frontend"]),
-            ExtractedItem(task="Fix mobile layout on iOS 17", deadline=5, priority=3, tags=["bug", "frontend"]),
-            ExtractedItem(task="Complete MySQL to PostgreSQL migration", deadline=4, priority=4, tags=["backend", "database", "infra"]),
-            ExtractedItem(task="Finish Kubernetes cluster setup", deadline=4, priority=4, tags=["devops", "infra"]),
-            ExtractedItem(task="Achieve 80% test coverage on auth module", deadline=6, priority=3, tags=["testing", "auth"]),
-            ExtractedItem(task="Write API documentation for integration partners", deadline=8, priority=2, tags=["documentation"]),
-            ExtractedItem(task="Implement file upload feature", deadline=10, priority=3, tags=["feature", "backend", "frontend"]),
-        ]
+
+_FALLBACKS = {
+    Difficulty.EASY: _fallback_easy,
+    Difficulty.MEDIUM: _fallback_medium,
+    Difficulty.HARD: _fallback_hard,
+}
+
+
+def _load_dataset() -> list[dict]:
+    if not DATASET_PATH.exists():
+        return []
+    data = json.loads(DATASET_PATH.read_text(encoding="utf-8"))
+    return data if isinstance(data, list) else []
+
+
+def _normalize_scenario(raw: dict) -> Dict[str, object]:
+    return {
+        "transcript": raw["transcript"],
+        "developers": [Developer(**dev) for dev in raw.get("developers", [])],
+        "items": [ExtractedItem(**item) for item in raw.get("items", [])],
+        "events": [SprintEvent(**event) for event in raw.get("events", [])],
+    }
+
+
+def _dataset_scenarios_for(difficulty: Difficulty) -> list[Dict[str, object]]:
+    scenarios = []
+    for raw in _load_dataset():
+        if str(raw.get("difficulty", "")).lower() == difficulty.value:
+            try:
+                scenarios.append(_normalize_scenario(raw))
+            except Exception:
+                continue
+    return scenarios
+
+
+def get_scenario(
+    difficulty: Difficulty,
+    *,
+    sample: bool = False,
+    rng: Optional[random.Random] = None,
+    scenario_index: Optional[int] = None,
+) -> Dict[str, object]:
+    dataset_scenarios = _dataset_scenarios_for(difficulty)
+    if dataset_scenarios and (sample or scenario_index is not None):
+        if scenario_index is not None:
+            scenario = dataset_scenarios[scenario_index % len(dataset_scenarios)]
+        elif sample:
+            chooser = rng or random
+            scenario = chooser.choice(dataset_scenarios)
+        return {
+            "transcript": scenario["transcript"],
+            "developers": deepcopy(scenario["developers"]),
+            "items": deepcopy(scenario["items"]),
+            "events": deepcopy(scenario["events"]),
+        }
+
+    fallback = _FALLBACKS[difficulty]()
+    return {
+        "transcript": fallback["transcript"],
+        "developers": deepcopy(fallback["developers"]),
+        "items": deepcopy(fallback["items"]),
+        "events": deepcopy(fallback["events"]),
+    }
+
+
+def get_developers(difficulty: Difficulty, **kwargs) -> List[Developer]:
+    return get_scenario(difficulty, **kwargs)["developers"]  # type: ignore[return-value]
+
+
+def get_transcript(difficulty: Difficulty, **kwargs) -> str:
+    return get_scenario(difficulty, **kwargs)["transcript"]  # type: ignore[return-value]
+
+
+def get_extracted_items(difficulty: Difficulty, **kwargs) -> List[ExtractedItem]:
+    return get_scenario(difficulty, **kwargs)["items"]  # type: ignore[return-value]
+
+
+def get_events(difficulty: Difficulty, **kwargs) -> List[SprintEvent]:
+    return get_scenario(difficulty, **kwargs)["events"]  # type: ignore[return-value]
