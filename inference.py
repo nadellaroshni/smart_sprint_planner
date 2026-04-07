@@ -28,7 +28,8 @@ from env.models import Action, Difficulty, Observation
 ENV_NAME = "smart_sprint_env"
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME") or os.getenv("IMAGE_NAME")
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
 
 _client: OpenAI | str | None = None
 
@@ -206,35 +207,51 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 
 def run_episode(difficulty: Difficulty = Difficulty.MEDIUM, render: bool = False) -> dict:
     env = SprintEnv(difficulty=difficulty, max_steps=20, use_llm=False)
-    obs = env.reset()
     rewards: List[float] = []
     done = False
+    result = {"score": 0.0}
+    success = False
 
     log_start(difficulty.value)
 
-    if render:
-        print(env.render(), file=sys.stderr)
-
-    while not done:
-        choice, action_str = choose_action(obs)
-        if choice is None:
-            action = Action(task_id="INVALID_TASK", developer_id="INVALID_DEV")
-            obs, reward, done, info = env.step(action)
-            rewards.append(reward)
-            log_step(env.current_step, action_str, reward, done, info)
-            continue
-
-        action = Action(task_id=choice[0], developer_id=choice[1])
-        obs, reward, done, info = env.step(action)
-        rewards.append(reward)
-        log_step(env.current_step, action_str, reward, done, info)
+    try:
+        obs = env.reset()
 
         if render:
             print(env.render(), file=sys.stderr)
 
-    result = grade(env)
-    success = result["score"] > 0.0
-    log_end(success, env.current_step, result["score"], rewards)
+        while not done:
+            choice, action_str = choose_action(obs)
+            if choice is None:
+                action = Action(task_id="INVALID_TASK", developer_id="INVALID_DEV")
+                obs, reward, done, info = env.step(action)
+                rewards.append(reward)
+                log_step(env.current_step, action_str, reward, done, info)
+                continue
+
+            action = Action(task_id=choice[0], developer_id=choice[1])
+            obs, reward, done, info = env.step(action)
+            rewards.append(reward)
+            log_step(env.current_step, action_str, reward, done, info)
+
+            if render:
+                print(env.render(), file=sys.stderr)
+
+        result = grade(env)
+        success = result["score"] > 0.0
+    except Exception as exc:
+        error_info = {"error": str(exc)}
+        log_step(env.current_step + 1, "exception()", 0.0, True, error_info)
+        result = {"score": 0.0}
+        success = False
+    finally:
+        close_fn = getattr(env, "close", None)
+        if callable(close_fn):
+            try:
+                close_fn()
+            except Exception:
+                pass
+        log_end(success, env.current_step, result["score"], rewards)
     return result
 
 

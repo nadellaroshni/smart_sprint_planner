@@ -39,12 +39,14 @@ class SprintEnv:
         max_steps: int = 20,
         use_llm: bool = True,
         sample_scenarios: bool = False,
+        scenario_split: Optional[str] = None,
         seed: int = 42,
     ):
         self.difficulty = difficulty
         self.max_steps = max_steps
         self.use_llm = use_llm
         self.sample_scenarios = sample_scenarios
+        self.scenario_split = scenario_split
         self.current_step = 0
         self._state: Dict[str, Any] = {}
         self._metrics = SprintMetrics()
@@ -56,6 +58,7 @@ class SprintEnv:
         difficulty: Optional[Difficulty] = None,
         audio_path: Optional[str] = None,
         transcript_override: Optional[str] = None,
+        scenario_index: Optional[int] = None,
     ) -> Observation:
         if difficulty is not None:
             self.difficulty = difficulty
@@ -64,7 +67,13 @@ class SprintEnv:
         self._metrics = SprintMetrics()
         self._next_ticket_num = 1
 
-        scenario = get_scenario(self.difficulty, sample=self.sample_scenarios, rng=self._rng)
+        scenario = get_scenario(
+            self.difficulty,
+            sample=self.sample_scenarios,
+            rng=self._rng,
+            scenario_index=scenario_index,
+            split=self.scenario_split,
+        )
 
         if transcript_override:
             transcript = transcript_override
@@ -88,6 +97,7 @@ class SprintEnv:
         event_schedule = sorted(deepcopy(scenario["events"]), key=lambda e: e.day)  # type: ignore[arg-type]
 
         self._state = {
+            "scenario_id": scenario.get("scenario_id", ""),
             "meeting_text": transcript,
             "extracted_items": [item.model_dump() for item in extracted],
             "tickets": [ticket.model_dump() for ticket in tickets],
@@ -131,6 +141,18 @@ class SprintEnv:
         on_time = task["deadline"] >= self.current_step
         skill_match = self._skill_matches(dev, task)
         is_high_priority = task["priority"] >= Priority.HIGH.value
+        future_dependency_value = self._future_dependency_unlock_value(task)
+        future_capacity_risk = self._future_capacity_loss_risk(dev["id"])
+        preserve_capacity_penalty = self._preserve_specialist_capacity_penalty(task, dev)
+        unblocked_dependents = sum(
+            1 for other in self._state["tickets"]
+            if other["id"] != task["id"] and task["id"] in other.get("dependencies", [])
+        )
+        outstanding_event_tasks = sum(
+            1 for ticket in self._state["tickets"]
+            if ticket.get("source_event") and ticket["id"] != task["id"]
+        )
+        feasible_before = self._count_feasible_tasks()
 
         dev["capacity"] -= task["story_points"]
         dev["active_tasks"].append(task["id"])
@@ -145,15 +167,36 @@ class SprintEnv:
             self._state["deadline_violations"] += 1
             self._metrics.tasks_failed_deadline += 1
 
+        feasible_after = self._count_feasible_tasks()
+
         reward, breakdown = compute_step_reward(True, True, True, False, on_time, skill_match, is_high_priority)
         adaptation_reward, adaptation_breakdown = compute_adaptation_reward(
             task=task,
             recent_events=self._state.get("recent_events", []),
             pending_events=self._state.get("pending_events", []),
             on_time=on_time,
+            unblocked_dependents=unblocked_dependents,
+            outstanding_event_tasks=outstanding_event_tasks,
         )
         reward += adaptation_reward
         breakdown.update(adaptation_breakdown)
+
+        if future_dependency_value > 0:
+            unlock_bonus = min(0.15, 0.05 * future_dependency_value)
+            reward += unlock_bonus
+            breakdown["future_dependency_preparation"] = unlock_bonus
+
+        if preserve_capacity_penalty > 0 and future_capacity_risk > 0:
+            penalty = min(0.15, preserve_capacity_penalty * future_capacity_risk)
+            reward -= penalty
+            breakdown["future_capacity_preservation_penalty"] = -penalty
+
+        if len(self._state["tickets"]) > 0 and feasible_after == 0:
+            reward -= 0.2
+            breakdown["future_feasibility_dead_end"] = -0.2
+        elif feasible_after >= max(feasible_before - 1, 1):
+            reward += 0.05
+            breakdown["future_feasibility_preserved"] = 0.05
 
         if task.get("source_event"):
             self._metrics.disruption_tasks_completed += 1
@@ -246,6 +289,7 @@ class SprintEnv:
             metrics=self._metrics,
             difficulty=self.difficulty,
             recent_events=[SprintEvent(**event) for event in self._state.get("recent_events", [])],
+            pending_events=[SprintEvent(**event) for event in self._state.get("pending_events", [])],
         )
 
     def _is_done(self) -> bool:
@@ -304,6 +348,7 @@ class SprintEnv:
             ticket_payload = new_ticket.model_dump()
             ticket_payload["id"] = f"T{self._next_ticket_num:03d}"
             ticket_payload["source_event"] = event.title
+            ticket_payload["source_event_type"] = event.type.value
             self._next_ticket_num += 1
             self._state["tickets"].append(ticket_payload)
             self._state["extracted_items"].append(extracted.model_dump())
@@ -371,6 +416,61 @@ class SprintEnv:
         if developer_id is None:
             return None
         return next((dev for dev in self._state.get("developers", []) if dev["id"] == developer_id), None)
+
+    def _count_feasible_tasks(self) -> int:
+        count = 0
+        for task in self._state.get("tickets", []):
+            if self._has_unresolved_deps(task):
+                continue
+            if any(dev["capacity"] >= task["story_points"] for dev in self._state.get("developers", [])):
+                count += 1
+        return count
+
+    def _future_dependency_unlock_value(self, task: dict) -> int:
+        score = 0
+        title_lower = task["title"].strip().lower()
+        for raw_event in self._state.get("pending_events", []):
+            if raw_event.get("type") != EventType.ADD_DEPENDENCY.value:
+                continue
+            depends_on = raw_event.get("payload", {}).get("depends_on")
+            if depends_on == task["id"] or str(depends_on or "").strip().lower() == title_lower:
+                score += 1
+        return score
+
+    def _future_capacity_loss_risk(self, developer_id: str) -> float:
+        risk = 0.0
+        for raw_event in self._state.get("pending_events", []):
+            if raw_event.get("type") != EventType.CAPACITY_CHANGE.value:
+                continue
+            payload = raw_event.get("payload", {})
+            if payload.get("developer_id") != developer_id:
+                continue
+            day_distance = max(int(raw_event.get("day", self.current_step + 1)) - self.current_step, 1)
+            if "new_capacity" in payload:
+                dev = self._find_developer(developer_id)
+                if dev is None:
+                    continue
+                reduction = max(dev["capacity"] - int(payload.get("new_capacity", dev["capacity"])), 0)
+            else:
+                reduction = max(-int(payload.get("capacity_delta", 0)), 0)
+            if reduction > 0:
+                risk = max(risk, min(1.0, reduction / 5.0) * (1.0 / day_distance))
+        return risk
+
+    def _preserve_specialist_capacity_penalty(self, task: dict, chosen_dev: dict) -> float:
+        chosen_tags = set(chosen_dev.get("specializations", []))
+        task_tags = set(task.get("tags", []))
+        if chosen_tags & task_tags:
+            return 0.0
+
+        for dev in self._state.get("developers", []):
+            if dev["id"] == chosen_dev["id"]:
+                continue
+            if dev["capacity"] < task["story_points"]:
+                continue
+            if set(dev.get("specializations", [])) & task_tags:
+                return 1.0
+        return 0.0
 
     def _log_episode_summary(self) -> None:
         completed = len(self._state["completed"])

@@ -174,6 +174,15 @@ class TestStep:
         assert seen >= 3
         assert len(env_hard.state()["event_history"]) >= 3
 
+    def test_event_added_task_keeps_source_event_in_observation(self, env_medium):
+        obs = env_medium.reset()
+        for _ in range(3):
+            task = obs.jira_tickets[0]
+            dev = next((d for d in obs.developers if d.capacity >= task.story_points), obs.developers[0])
+            obs, _, _, _ = env_medium.step(Action(task_id=task.id, developer_id=dev.id))
+
+        assert any(task.source_event for task in obs.jira_tickets)
+
 
 # ---------------------------------------------------------------------------
 # Reward tests

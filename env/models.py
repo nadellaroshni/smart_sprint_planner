@@ -50,13 +50,19 @@ class Task(BaseModel):
     id: str
     title: str
     description: str = ""
+    category: str = "general"
     story_points: int = Field(ge=1, le=13)
     deadline: int = Field(ge=1, description="Sprint day by which task must be done")
     priority: Priority = Priority.MEDIUM
     status: TaskStatus = TaskStatus.BACKLOG
     dependencies: List[str] = Field(default_factory=list, description="List of Task IDs this task depends on")
     tags: List[str] = Field(default_factory=list)
+    acceptance_criteria: List[str] = Field(default_factory=list)
+    owner_hint: Optional[str] = None
+    urgency_reason: str = ""
     assigned_to: Optional[str] = None
+    source_event: Optional[str] = None
+    source_event_type: Optional[str] = None
 
 
 class Developer(BaseModel):
@@ -119,6 +125,7 @@ class Observation(BaseModel):
     metrics: SprintMetrics = Field(default_factory=SprintMetrics)
     difficulty: Difficulty = Difficulty.MEDIUM
     recent_events: List[SprintEvent] = Field(default_factory=list)
+    pending_events: List[SprintEvent] = Field(default_factory=list)
 
     @property
     def backlog_count(self) -> int:
@@ -162,3 +169,35 @@ class GradeResponse(BaseModel):
     score: float = Field(ge=0.0, le=1.0)
     breakdown: Dict[str, float]
     summary: str
+
+
+class PlanRequest(BaseModel):
+    difficulty: Difficulty = Difficulty.MEDIUM
+    audio_path: Optional[str] = None
+    transcript: Optional[str] = None
+    strategy: str = "auto"
+    checkpoint: Optional[str] = None
+
+
+class AssignmentRecommendation(BaseModel):
+    step: int
+    task_id: str
+    task_title: str
+    developer_id: str
+    developer_name: str
+    reward: float
+    on_time: bool = True
+    skill_match: bool = False
+    source_event: Optional[str] = None
+
+
+class PlanResponse(BaseModel):
+    strategy: str
+    transcript: str
+    extracted_items: List[ExtractedItem]
+    jira_tickets: List[Task]
+    assignments: List[AssignmentRecommendation]
+    score: float = Field(ge=0.0, le=1.0)
+    breakdown: Dict[str, float]
+    summary: str
+    final_board: str

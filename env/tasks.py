@@ -14,12 +14,13 @@ from __future__ import annotations
 import json
 import random
 from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from .models import Developer, Difficulty, EventType, ExtractedItem, SprintEvent
 
-DATASET_PATH = Path("dataset.json")
+DATASET_GLOB = "dataset*.json"
 
 
 def _fallback_easy() -> Dict[str, object]:
@@ -119,15 +120,19 @@ _FALLBACKS = {
 }
 
 
+@lru_cache(maxsize=1)
 def _load_dataset() -> list[dict]:
-    if not DATASET_PATH.exists():
-        return []
-    data = json.loads(DATASET_PATH.read_text(encoding="utf-8"))
-    return data if isinstance(data, list) else []
+    scenarios: list[dict] = []
+    for path in sorted(Path(".").glob(DATASET_GLOB)):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            scenarios.extend(data)
+    return scenarios
 
 
 def _normalize_scenario(raw: dict) -> Dict[str, object]:
     return {
+        "scenario_id": raw.get("scenario_id", ""),
         "transcript": raw["transcript"],
         "developers": [Developer(**dev) for dev in raw.get("developers", [])],
         "items": [ExtractedItem(**item) for item in raw.get("items", [])],
@@ -146,14 +151,44 @@ def _dataset_scenarios_for(difficulty: Difficulty) -> list[Dict[str, object]]:
     return scenarios
 
 
+def _split_dataset_scenarios(
+    scenarios: List[Dict[str, object]],
+    split: Optional[str],
+) -> List[Dict[str, object]]:
+    if not scenarios or split in (None, "all"):
+        return scenarios
+
+    ordered = sorted(
+        scenarios,
+        key=lambda scenario: str(scenario.get("scenario_id", "")) or str(scenario.get("transcript", ""))[:40],
+    )
+    if len(ordered) == 1:
+        return ordered
+
+    eval_count = max(1, len(ordered) // 5)
+    train_count = max(1, len(ordered) - eval_count)
+    if train_count == len(ordered):
+        train_count = len(ordered) - 1
+
+    train_set = ordered[:train_count]
+    eval_set = ordered[train_count:]
+
+    if split == "train":
+        return train_set
+    if split == "eval":
+        return eval_set or train_set[-1:]
+    return ordered
+
+
 def get_scenario(
     difficulty: Difficulty,
     *,
     sample: bool = False,
     rng: Optional[random.Random] = None,
     scenario_index: Optional[int] = None,
+    split: Optional[str] = None,
 ) -> Dict[str, object]:
-    dataset_scenarios = _dataset_scenarios_for(difficulty)
+    dataset_scenarios = _split_dataset_scenarios(_dataset_scenarios_for(difficulty), split)
     if dataset_scenarios and (sample or scenario_index is not None):
         if scenario_index is not None:
             scenario = dataset_scenarios[scenario_index % len(dataset_scenarios)]
@@ -161,6 +196,7 @@ def get_scenario(
             chooser = rng or random
             scenario = chooser.choice(dataset_scenarios)
         return {
+            "scenario_id": scenario.get("scenario_id", ""),
             "transcript": scenario["transcript"],
             "developers": deepcopy(scenario["developers"]),
             "items": deepcopy(scenario["items"]),
@@ -169,6 +205,7 @@ def get_scenario(
 
     fallback = _FALLBACKS[difficulty]()
     return {
+        "scenario_id": f"fallback-{difficulty.value}",
         "transcript": fallback["transcript"],
         "developers": deepcopy(fallback["developers"]),
         "items": deepcopy(fallback["items"]),
@@ -190,3 +227,12 @@ def get_extracted_items(difficulty: Difficulty, **kwargs) -> List[ExtractedItem]
 
 def get_events(difficulty: Difficulty, **kwargs) -> List[SprintEvent]:
     return get_scenario(difficulty, **kwargs)["events"]  # type: ignore[return-value]
+
+
+def dataset_available() -> bool:
+    return bool(_load_dataset())
+
+
+def get_scenario_count(difficulty: Difficulty, split: Optional[str] = None) -> int:
+    scenarios = _split_dataset_scenarios(_dataset_scenarios_for(difficulty), split)
+    return len(scenarios) if scenarios else 1

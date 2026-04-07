@@ -49,6 +49,8 @@ def compute_adaptation_reward(
     recent_events: list[dict],
     pending_events: list[dict],
     on_time: bool,
+    unblocked_dependents: int = 0,
+    outstanding_event_tasks: int = 0,
 ) -> Tuple[float, Dict[str, float]]:
     breakdown: Dict[str, float] = {}
     is_disruption_task = bool(task.get("source_event"))
@@ -63,6 +65,12 @@ def compute_adaptation_reward(
 
     if recent_events and not pending_events:
         breakdown["stabilized_final_disruption"] = 0.05
+
+    if unblocked_dependents > 0:
+        breakdown["dependency_unblock"] = min(0.15, 0.05 * unblocked_dependents)
+
+    if outstanding_event_tasks > 0 and is_disruption_task:
+        breakdown["event_backlog_relief"] = min(0.1, 0.03 * outstanding_event_tasks)
 
     return sum(breakdown.values()), breakdown
 

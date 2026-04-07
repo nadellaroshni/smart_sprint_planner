@@ -138,12 +138,16 @@ def create_tickets(items: List[ExtractedItem]) -> List[Task]:
             id=f"T{i + 1:03d}",
             title=item.task,
             description=description,
+            category=item.category,
             story_points=sp,
             deadline=item.deadline,
             priority=Priority(item.priority),
             status=TaskStatus.BACKLOG,
             tags=tags,
             dependencies=[],
+            acceptance_criteria=item.acceptance_criteria,
+            owner_hint=item.owner_hint,
+            urgency_reason=item.urgency_reason,
         )
         tickets.append(ticket)
 

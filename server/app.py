@@ -15,6 +15,8 @@ from env.environment import SprintEnv
 from env.graders import grade
 from env.models import (
     Action,
+    PlanRequest,
+    PlanResponse,
     Difficulty,
     GradeResponse,
     Observation,
@@ -22,6 +24,7 @@ from env.models import (
     StepRequest,
     StepResult,
 )
+from planner import generate_plan
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +100,19 @@ def get_grade():
     if env is None:
         raise HTTPException(500, "Environment not initialised.")
     return GradeResponse(**grade(env))
+
+
+@app.post("/plan", response_model=PlanResponse)
+def plan(request: PlanRequest):
+    if not request.audio_path and not request.transcript:
+        raise HTTPException(400, "Provide either audio_path or transcript")
+    return generate_plan(
+        difficulty=request.difficulty,
+        audio_path=request.audio_path,
+        transcript=request.transcript,
+        strategy=request.strategy,
+        checkpoint=request.checkpoint,
+    )
 
 
 def main() -> None:
