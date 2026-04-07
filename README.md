@@ -1,3 +1,12 @@
+---
+title: Smart Sprint Planner
+emoji: "🗂️"
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # Smart Sprint Planner
 
 Real-world OpenEnv environment for agile sprint planning and dynamic replanning.
