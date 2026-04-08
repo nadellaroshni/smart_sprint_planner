@@ -13,30 +13,27 @@ TASK_CATALOG: list[TaskDescriptor] = [
         name="easy",
         difficulty=Difficulty.EASY,
         objective=(
-            "Create the best sprint plan from a static backlog with fixed team capacity "
-            "and fixed deadlines."
+            "Create the best sprint plan from a static backlog with fixed capacity and deadlines."
         ),
-        grader="env.graders.grade",
+        grader="env.graders:grade",
     ),
     TaskDescriptor(
         id="medium",
         name="medium",
         difficulty=Difficulty.MEDIUM,
         objective=(
-            "Revise the sprint plan after one mid-sprint disruption such as urgent work "
-            "or a developer capacity loss."
+            "Revise the sprint plan once after a single mid-sprint disruption (e.g., new urgent work or capacity loss)."
         ),
-        grader="env.graders.grade",
+        grader="env.graders:grade",
     ),
     TaskDescriptor(
         id="hard",
         name="hard",
         difficulty=Difficulty.HARD,
         objective=(
-            "Repeatedly re-plan under multiple disruptions including added work, "
-            "capacity changes, and dependency shifts while preserving feasibility."
+            "Re-plan repeatedly under multiple disruptions while preserving feasibility and value delivery."
         ),
-        grader="env.graders.grade",
+        grader="env.graders:grade",
     ),
 ]
 

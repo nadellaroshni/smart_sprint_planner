@@ -7,9 +7,30 @@ version: "1.0.0"
 entrypoint: env.environment:SprintEnv
 
 tasks:
-  - easy
-  - medium
-  - hard
+  - id: easy
+    name: easy
+    difficulty: easy
+    objective: Create the best sprint plan from a static backlog with fixed capacity and deadlines.
+    description: Static sprint planning without disruptions. Evaluate the agent's ability to prioritize tasks by urgency, deadline, skill fit, and available developer capacity. Success means maximizing task completion rate while respecting deadlines.
+    grader: env.graders:grade
+    score_range: [0.0, 1.0]
+    deterministic: true
+  - id: medium
+    name: medium
+    difficulty: medium
+    objective: Revise the sprint plan once after a single mid-sprint disruption (e.g., new urgent work or capacity loss).
+    description: Dynamic replanning with one disruption event. Tests agent adaptability—can the agent absorb new urgent work and rebalance without cascading failures? Success means maintaining overall completion rate while prioritizing disruption-created work.
+    grader: env.graders:grade
+    score_range: [0.0, 1.0]
+    deterministic: true
+  - id: hard
+    name: hard
+    difficulty: hard
+    objective: Re-plan repeatedly under multiple disruptions while preserving feasibility and value delivery.
+    description: Complex replanning with 3+ disruptions over time (new work, dependency shifts, capacity loss). Frontier task requiring sophisticated re-planning strategies. Tests if the agent can handle volatility while maximizing utility. Success means staying feasible, completing high-priority work, and adapting gracefully.
+    grader: env.graders:grade
+    score_range: [0.0, 1.0]
+    deterministic: true
 
 environment:
   max_steps: 20
