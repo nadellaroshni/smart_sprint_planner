@@ -3,6 +3,7 @@ title: Smart Sprint Planner
 emoji: "🗂️"
 colorFrom: blue
 colorTo: green
+# Force rebuild - ensures latest code is deployed
 sdk: docker
 app_port: 7860
 ---
