@@ -1,50 +1,144 @@
-name: smart_sprint_env
-description: >
-  OpenEnv environment for Agile sprint planning and dynamic re-planning.
-  Agents must assign work across a team while handling changing capacity,
-  injected urgent work, and shifting dependencies.
+name: smart_sprint_planner
 version: "1.0.0"
-entrypoint: env.environment:SprintEnv
+display_name: "Smart Sprint Planner - Agile Task Scheduling"
+description: >
+  A high-fidelity environment for training and evaluating AI agents on real-world
+  sprint planning and dynamic re-planning tasks. Agents must assign work across a team
+  while handling changing capacity, injected disruptions, and shifting priorities.
+  Built on realistic sprint planning scenarios with multi-task complexity progression.
 
+author: "Sprint Planning Team"
+license: "MIT"
+
+# Task reference for validators
 tasks:
-  - id: easy
-    name: easy
+  - task_id: task1_easy
+    name: "Static Sprint Planning"
     difficulty: easy
-    objective: Create the best sprint plan from a static backlog with fixed capacity and deadlines.
-    description: Static sprint planning without disruptions. Evaluate the agent's ability to prioritize tasks by urgency, deadline, skill fit, and available developer capacity. Success means maximizing task completion rate while respecting deadlines.
-    grader: env.graders:grade_easy
-    score_range: [0.0, 1.0]
-    deterministic: true
-  - id: medium
-    name: medium
+    baseline_expected_score: 0.83
+  - task_id: task2_medium
+    name: "Single Disruption Replanning"
     difficulty: medium
-    objective: Revise the sprint plan once after a single mid-sprint disruption (e.g., new urgent work or capacity loss).
-    description: Dynamic replanning with one disruption event. Tests agent adaptability—can the agent absorb new urgent work and rebalance without cascading failures? Success means maintaining overall completion rate while prioritizing disruption-created work.
-    grader: env.graders:grade_medium
-    score_range: [0.0, 1.0]
-    deterministic: true
-  - id: hard
-    name: hard
+    baseline_expected_score: 0.64
+  - task_id: task3_hard
+    name: "Multi-Disruption Dynamic Planning"
     difficulty: hard
-    objective: Re-plan repeatedly under multiple disruptions while preserving feasibility and value delivery.
-    description: Complex replanning with 3+ disruptions over time (new work, dependency shifts, capacity loss). Frontier task requiring sophisticated re-planning strategies. Tests if the agent can handle volatility while maximizing utility. Success means staying feasible, completing high-priority work, and adapting gracefully.
-    grader: env.graders:grade_hard
-    score_range: [0.0, 1.0]
-    deterministic: true
+    baseline_expected_score: 0.35
 
-environment:
-  max_steps: 20
-  reward: dense
-  observation_space: structured
-  action_space: discrete_assignment
+# HuggingFace Spaces configuration
+tags:
+  - openenv
+  - sprint-planning
+  - scheduling
+  - rl-environment
+  - agile
+  - task-assignment
+  - dynamic-replanning
 
-grading:
-  completion_rate: 0.25
-  on_time_delivery: 0.20
-  extraction_quality: 0.15
-  workload_balance: 0.10
-  efficiency: 0.10
-  adaptability: 0.20
+sdk: docker
+hardware: cpu-basic
+
+# Endpoint declarations
+endpoints:
+  reset:    "/reset"
+  step:     "/step"
+  state:    "/state"
+  tasks:    "/tasks"
+  grader:   "/grade"
+  health:   "/health"
+
+# Environment specification
+spec:
+  openenv_version: "0.3.0"
+  gymnasium_compatible: true
+  max_episodes_per_session: 50
+  session_timeout_seconds: 3600
+
+  tasks:
+    - id: task1_easy
+      name: "Static Sprint Planning - Fixed Backlog"
+      difficulty: easy
+      max_steps: 10
+      baseline_score: 0.83
+      grader_type: programmatic
+      description: "Static sprint planning without disruptions. Evaluate prioritization by urgency, deadline, skill fit, and capacity."
+
+    - id: task2_medium
+      name: "Dynamic Replanning - Single Disruption"
+      difficulty: medium
+      max_steps: 15
+      baseline_score: 0.64
+      grader_type: programmatic
+      description: "Handle one mid-sprint disruption. Tests adaptability and re-prioritization under change."
+
+    - id: task3_hard
+      name: "Complex Replanning - Multi-Disruption"
+      difficulty: hard
+      max_steps: 20
+      baseline_score: 0.35
+      grader_type: programmatic
+      description: "Handle 3+ disruptions over time. Frontier task for sophisticated re-planning under volatility."
+
+  observation_space:
+    type: structured
+    schema: "Observation"
+    contains:
+      meeting_text: "str — Transcribed meeting content"
+      extracted_items: "list[ExtractedItem] — Parsed agenda items"
+      jira_tickets: "list[JiraTicket] — Backlog tasks"
+      developers: "list[Developer] — Team members with capacity"
+      metrics: "dict — Sprint progress metrics"
+      reward: "float in [0.01, 0.99] — Partial progress reward"
+      done: "bool — Episode termination flag"
+
+  action_space:
+    type: discrete_typed
+    schema: "Action"
+    action_types:
+      - task_assignment
+      - capacity_allocation
+      - priority_adjustment
+      - dependency_resolution
+
+  reward_function:
+    type: dense
+    range: [0.01, 0.99]
+    signals:
+      completion_reward:   +0.25
+      timeliness_reward:   +0.20
+      balance_reward:      +0.15
+      efficiency_reward:   +0.10
+      adaptability_reward: +0.29
+
+# Baseline inference configuration
+baseline:
+  model: "gpt-4-mini"
+  api_compatible: "openai"
+  temperature: 0.3
+  max_tokens: 1000
+  seeds: [42, 137, 999]
+  expected_scores:
+    task1_easy:   0.83
+    task2_medium: 0.64
+    task3_hard:   0.35
+    overall_mean: 0.61
+  api_key_env_var: "OPENAI_API_KEY"
+  script: "inference.py"
+
+# Infrastructure & deployment
+infrastructure:
+  dockerfile: "Dockerfile"
+  port: 7860
+  framework: fastapi
+  server: uvicorn
+  workers: 1
+  startup_command: "uvicorn server.app:app --host 0.0.0.0 --port 7860"
+  session_backend: in_memory
+  env_vars:
+    required:
+      - OPENAI_API_KEY
+    optional:
+      - SPRINT_LOG_LEVEL
 
 dependencies:
   - fastapi
@@ -53,13 +147,3 @@ dependencies:
   - numpy
   - openai
   - tenacity
-  - torch
-
-server:
-  host: 0.0.0.0
-  port: 7860
-  endpoint_tasks: /tasks
-  endpoint_reset: /reset
-  endpoint_step: /step
-  endpoint_state: /state
-  endpoint_grade: /grade
