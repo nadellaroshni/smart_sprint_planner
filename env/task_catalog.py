@@ -15,7 +15,7 @@ TASK_CATALOG: list[TaskDescriptor] = [
         objective=(
             "Create the best sprint plan from a static backlog with fixed capacity and deadlines."
         ),
-        grader="env.graders:grade",
+        grader="env.graders:grade_easy",
     ),
     TaskDescriptor(
         id="medium",
@@ -24,7 +24,7 @@ TASK_CATALOG: list[TaskDescriptor] = [
         objective=(
             "Revise the sprint plan once after a single mid-sprint disruption (e.g., new urgent work or capacity loss)."
         ),
-        grader="env.graders:grade",
+        grader="env.graders:grade_medium",
     ),
     TaskDescriptor(
         id="hard",
@@ -33,7 +33,7 @@ TASK_CATALOG: list[TaskDescriptor] = [
         objective=(
             "Re-plan repeatedly under multiple disruptions while preserving feasibility and value delivery."
         ),
-        grader="env.graders:grade",
+        grader="env.graders:grade_hard",
     ),
 ]
 

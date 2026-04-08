@@ -198,3 +198,19 @@ def _gini(values: list[int]) -> float:
     for i, value in enumerate(values, 1):
         cumsum += value * (2 * i - n - 1)
     return cumsum / (n * sum(values))
+
+
+# Task-specific grader wrappers for explicit task grading
+def grade_easy(env) -> Dict[str, Any]:
+    """Grader for easy task: static sprint planning with fixed backlog."""
+    return grade(env)
+
+
+def grade_medium(env) -> Dict[str, Any]:
+    """Grader for medium task: single disruption replanning."""
+    return grade(env)
+
+
+def grade_hard(env) -> Dict[str, Any]:
+    """Grader for hard task: multi-disruption dynamic replanning."""
+    return grade(env)
