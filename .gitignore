@@ -1,6 +1,12 @@
 .env
 context_scaler.txt
 
+# Test and validation scripts (local only)
+test_*.py
+phase*_validator_test.py
+final_phase1_check.py
+FINAL_CHECKLIST.txt
+
 # Python bytecode and caches
 __pycache__/
 *.py[cod]
