@@ -200,17 +200,222 @@ def _gini(values: list[int]) -> float:
     return cumsum / (n * sum(values))
 
 
-# Task-specific grader wrappers for explicit task grading
+# Task-specific grader wrappers with different weightings per difficulty
 def grade_easy(env) -> Dict[str, Any]:
-    """Grader for easy task: static sprint planning with fixed backlog."""
-    return grade(env)
+    """Grader for easy task: static sprint planning with fixed backlog.
+    
+    Weights: Balance completion and on-time delivery (no disruptions).
+    Weighting: 30% completion, 30% on-time, 25% balance, 15% efficiency
+    """
+    state = env.state()
+    completed = state.get("completed", [])
+    tickets = state.get("tickets", [])
+    developers = state.get("developers", [])
+    extracted = state.get("extracted_items", [])
+    deadline_violations = state.get("deadline_violations", 0)
+    initial_caps = state.get("initial_capacities", {})
+    current_step = getattr(env, "current_step", 0)
+    max_steps = max(getattr(env, "max_steps", 20), 1)
+
+    total_tasks = len(completed) + len(tickets)
+    completion_rate = len(completed) / max(total_tasks, 1)
+    on_time = len(completed) - deadline_violations
+    on_time_rate = on_time / max(len(completed), 1)
+
+    detailed_items = [
+        item for item in extracted
+        if item.get("description") and item.get("acceptance_criteria") and item.get("category")
+    ]
+    extraction_quality = len(detailed_items) / max(len(extracted), 1) if extracted else 0.0
+
+    consumed = []
+    for dev in developers:
+        initial = initial_caps.get(dev["id"], dev["capacity"])
+        consumed.append(max(initial - dev["capacity"], 0))
+    gini = _gini(consumed)
+    workload_balance = max(0.0, 1.0 - (gini * 0.7))
+
+    step_pressure = min(current_step / max_steps, 1.0) if current_step > 0 else 0.0
+    completion_efficiency = len(completed) / max(total_tasks, 1)
+    efficiency = max(0.0, min(1.0, 0.6 * completion_efficiency + 0.4 * (1.0 - step_pressure)))
+
+    # EASY TASK WEIGHTING: Balanced completion + on-time
+    score = (
+        0.30 * completion_rate
+        + 0.30 * on_time_rate
+        + 0.25 * workload_balance
+        + 0.15 * efficiency
+    )
+
+    breakdown = {
+        "completion_rate": round(completion_rate, 3),
+        "on_time_rate": round(on_time_rate, 3),
+        "workload_balance": round(workload_balance, 3),
+        "efficiency": round(efficiency, 3),
+        "final_score": round(score, 3),
+    }
+
+    summary = (
+        f"Easy Score: {score:.2f} | Completed {len(completed)}/{total_tasks} | "
+        f"On-time: {on_time_rate:.0%}"
+    )
+    logger.info(summary)
+    return {"score": round(score, 3), "breakdown": breakdown, "summary": summary}
 
 
 def grade_medium(env) -> Dict[str, Any]:
-    """Grader for medium task: single disruption replanning."""
-    return grade(env)
+    """Grader for medium task: single disruption replanning.
+    
+    Weights: Balance completion, timeliness, and adaptability (one disruption).
+    Weighting: 25% completion, 20% on-time, 20% balance, 15% efficiency, 20% adaptability
+    """
+    state = env.state()
+    completed = state.get("completed", [])
+    tickets = state.get("tickets", [])
+    developers = state.get("developers", [])
+    extracted = state.get("extracted_items", [])
+    deadline_violations = state.get("deadline_violations", 0)
+    initial_caps = state.get("initial_capacities", {})
+    metrics = state.get("metrics", {})
+    current_step = getattr(env, "current_step", 0)
+    max_steps = max(getattr(env, "max_steps", 20), 1)
+
+    total_tasks = len(completed) + len(tickets)
+    completion_rate = len(completed) / max(total_tasks, 1)
+    on_time = len(completed) - deadline_violations
+    on_time_rate = on_time / max(len(completed), 1)
+
+    detailed_items = [
+        item for item in extracted
+        if item.get("description") and item.get("acceptance_criteria") and item.get("category")
+    ]
+    extraction_quality = len(detailed_items) / max(len(extracted), 1) if extracted else 0.0
+
+    consumed = []
+    for dev in developers:
+        initial = initial_caps.get(dev["id"], dev["capacity"])
+        consumed.append(max(initial - dev["capacity"], 0))
+    gini = _gini(consumed)
+    workload_balance = max(0.0, 1.0 - (gini * 0.7))
+
+    step_pressure = min(current_step / max_steps, 1.0) if current_step > 0 else 0.0
+    completion_efficiency = len(completed) / max(total_tasks, 1)
+    efficiency = max(0.0, min(1.0, 0.6 * completion_efficiency + 0.4 * (1.0 - step_pressure)))
+
+    disruptions_applied = metrics.get("disruptions_applied", 0)
+    disruption_tasks_added = metrics.get("disruption_tasks_added", 0)
+    disruption_tasks_completed = metrics.get("disruption_tasks_completed", 0)
+    recovery_actions = metrics.get("recovery_actions", 0)
+    if disruptions_applied == 0:
+        adaptability = 1.0
+    else:
+        disruption_completion = disruption_tasks_completed / max(disruption_tasks_added, 1)
+        reaction_quality = min(recovery_actions / max(disruptions_applied, 1), 1.0)
+        adaptability = min(1.0, 0.7 * disruption_completion + 0.3 * reaction_quality)
+
+    # MEDIUM TASK WEIGHTING: Balanced with adaptability bonus
+    score = (
+        0.25 * completion_rate
+        + 0.20 * on_time_rate
+        + 0.20 * workload_balance
+        + 0.15 * efficiency
+        + 0.20 * adaptability
+    )
+
+    breakdown = {
+        "completion_rate": round(completion_rate, 3),
+        "on_time_rate": round(on_time_rate, 3),
+        "workload_balance": round(workload_balance, 3),
+        "efficiency": round(efficiency, 3),
+        "adaptability": round(adaptability, 3),
+        "final_score": round(score, 3),
+    }
+
+    summary = (
+        f"Medium Score: {score:.2f} | Completed {len(completed)}/{total_tasks} | "
+        f"Adaptability: {adaptability:.2f}"
+    )
+    logger.info(summary)
+    return {"score": round(score, 3), "breakdown": breakdown, "summary": summary}
 
 
 def grade_hard(env) -> Dict[str, Any]:
-    """Grader for hard task: multi-disruption dynamic replanning."""
-    return grade(env)
+    """Grader for hard task: multi-disruption dynamic replanning.
+    
+    Weights: Maximize reward for successful multi-disruption handling.
+    Weighting: 15% completion, 15% on-time, 15% balance, 15% efficiency, 40% adaptability
+    
+    NOTE: Adaptability = 1.0 if no disruptions occur (agent executed well given scenario).
+          If disruptions occur, adaptability is scored on how well agent handles them.
+          With 40% weight, hard task can score high (0.8+) when handling disruptions well.
+    """
+    state = env.state()
+    completed = state.get("completed", [])
+    tickets = state.get("tickets", [])
+    developers = state.get("developers", [])
+    extracted = state.get("extracted_items", [])
+    deadline_violations = state.get("deadline_violations", 0)
+    initial_caps = state.get("initial_capacities", {})
+    metrics = state.get("metrics", {})
+    current_step = getattr(env, "current_step", 0)
+    max_steps = max(getattr(env, "max_steps", 20), 1)
+
+    total_tasks = len(completed) + len(tickets)
+    completion_rate = len(completed) / max(total_tasks, 1)
+    on_time = len(completed) - deadline_violations
+    on_time_rate = on_time / max(len(completed), 1)
+
+    detailed_items = [
+        item for item in extracted
+        if item.get("description") and item.get("acceptance_criteria") and item.get("category")
+    ]
+    extraction_quality = len(detailed_items) / max(len(extracted), 1) if extracted else 0.0
+
+    consumed = []
+    for dev in developers:
+        initial = initial_caps.get(dev["id"], dev["capacity"])
+        consumed.append(max(initial - dev["capacity"], 0))
+    gini = _gini(consumed)
+    workload_balance = max(0.0, 1.0 - (gini * 0.7))
+
+    step_pressure = min(current_step / max_steps, 1.0) if current_step > 0 else 0.0
+    completion_efficiency = len(completed) / max(total_tasks, 1)
+    efficiency = max(0.0, min(1.0, 0.6 * completion_efficiency + 0.4 * (1.0 - step_pressure)))
+
+    disruptions_applied = metrics.get("disruptions_applied", 0)
+    disruption_tasks_added = metrics.get("disruption_tasks_added", 0)
+    disruption_tasks_completed = metrics.get("disruption_tasks_completed", 0)
+    recovery_actions = metrics.get("recovery_actions", 0)
+    if disruptions_applied == 0:
+        # No disruptions occurred, agent executed the scenario well = full credit
+        adaptability = 1.0
+    else:
+        disruption_completion = disruption_tasks_completed / max(disruption_tasks_added, 1)
+        reaction_quality = min(recovery_actions / max(disruptions_applied, 1), 1.0)
+        adaptability = min(1.0, 0.7 * disruption_completion + 0.3 * reaction_quality)
+
+    # HARD TASK WEIGHTING: Maximize adaptability reward for multi-disruption handling
+    # Agents that handle complexity and disruptions well can score 0.8+
+    score = (
+        0.15 * completion_rate
+        + 0.15 * on_time_rate
+        + 0.15 * workload_balance
+        + 0.15 * efficiency
+        + 0.40 * adaptability
+    )
+
+    breakdown = {
+        "completion_rate": round(completion_rate, 3),
+        "on_time_rate": round(on_time_rate, 3),
+        "workload_balance": round(workload_balance, 3),
+        "efficiency": round(efficiency, 3),
+        "adaptability": round(adaptability, 3),
+        "final_score": round(score, 3),
+    }
+
+    summary = (
+        f"Hard Score: {score:.2f} | Completed {len(completed)}/{total_tasks} | "
+        f"Adaptability: {adaptability:.2f}"
+    )
+    logger.info(summary)
+    return {"score": round(score, 3), "breakdown": breakdown, "summary": summary}
