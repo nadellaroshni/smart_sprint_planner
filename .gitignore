@@ -11,7 +11,7 @@ __pycache__/
 .ruff_cache/
 
 # Virtual environments
-.venv/
+.venv/  
 venv/
 env.bak/
 whisper_env/
