@@ -1,5 +1,6 @@
 FROM python:3.10-slim
 
+# Rebuild trigger: 2026-04-08T23:20:00Z
 # System deps for Whisper (ffmpeg) and general build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
