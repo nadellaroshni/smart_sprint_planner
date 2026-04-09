@@ -31,11 +31,12 @@ from env.task_catalog import get_task_catalog
 
 BENCHMARK = "smart_sprint_planner"
 
-# Configuration - Prioritize validator-injected environment variables
-# The validator injects API_KEY and API_BASE_URL
-API_KEY = os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+# Configuration - STRICTLY use validator-injected environment variables
+# Validator injects: API_KEY, API_BASE_URL, MODEL_NAME
+# No fallbacks to other sources — use exactly what's injected
+API_KEY = os.environ.get("API_KEY")
+API_BASE_URL = os.environ.get("API_BASE_URL")
+MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 TEMPERATURE = 0.3
 MAX_COMPLETION_TOKENS = 800
 
@@ -257,6 +258,12 @@ def run_task(task_id: str, client: OpenAI) -> float:
 # Main
 def main() -> None:
     """Run all tasks in sequence."""
+    # Validate required environment variables
+    if not API_KEY:
+        raise ValueError("API_KEY environment variable must be set (injected via API_KEY env var)")
+    if not API_BASE_URL:
+        raise ValueError("API_BASE_URL environment variable must be set")
+    
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
     print(f"[DEBUG] Model: {MODEL_NAME}", flush=True)
