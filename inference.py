@@ -30,9 +30,11 @@ from env.models import Action, Difficulty, Observation
 from env.task_catalog import get_task_catalog
 
 BENCHMARK = "smart_sprint_planner"
-# Configuration
-API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+
+# Configuration - Prioritize validator-injected environment variables
+# The validator injects API_KEY and API_BASE_URL
+API_KEY = os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
+API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 TEMPERATURE = 0.3
 MAX_COMPLETION_TOKENS = 800

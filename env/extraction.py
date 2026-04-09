@@ -116,7 +116,8 @@ def _get_client():
         try:
             from openai import OpenAI
 
-            api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
+            # Prioritize validator-injected API_KEY
+            api_key = os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
             if not api_key:
                 logger.info("No API key configured for LLM extraction; using fallback extractor.")
                 _client = "unavailable"
