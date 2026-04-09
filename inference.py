@@ -282,12 +282,11 @@ def main() -> None:
 
     scores = []
     for task_id in TASKS:
-        try:
-            task_score = run_task(task_id, client)
-            scores.append(task_score)
-        except Exception as e:
-            print(f"[DEBUG] Task {task_id} exception: {e}", flush=True)
-            scores.append(0.01)
+        # Don't catch API errors - let them propagate so validator can see them
+        # If credentials are correct, API calls WILL be made and validator WILL see them
+        # If credentials are wrong, error propagates visibly instead of being silently swallowed
+        task_score = run_task(task_id, client)
+        scores.append(task_score)
 
     if scores:
         overall = max(0.01, min(0.99, sum(scores) / len(scores)))
