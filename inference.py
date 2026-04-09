@@ -250,10 +250,15 @@ def run_task(task_id: str, client: OpenAI) -> float:
         success = score > 0.3
 
     except Exception as exc:
-        print(f"[DEBUG] Task {task_id} failed: {exc}", flush=True)
-        score = 0.01
-        success = False
-
+        # Log API errors clearly but DO NOT SWALLOW - re-raise
+        if "API call failed" in str(exc) or "api_error" in str(exc):
+            print(f"[ERROR] Task {task_id} had API error: {exc}", flush=True)
+            raise  # ← MUST RE-RAISE API ERRORS
+        else:
+            # Only non-API errors get caught and return score 0
+            print(f"[DEBUG] Task {task_id} environment error: {exc}", flush=True)
+            score = 0.01
+            success = False
     finally:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
