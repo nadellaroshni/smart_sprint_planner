@@ -31,11 +31,18 @@ from env.task_catalog import get_task_catalog
 
 BENCHMARK = "smart_sprint_planner"
 
-# Configuration - Read validator-injected variables with sensible fallbacks
-# The validator injects API_KEY and API_BASE_URL, but code must handle cases where not set
-# If BASE_URL not set, must NOT fall back to hardcoded defaults — use router as proxy
-API_KEY = os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("HF_TOKEN")
-API_BASE_URL = os.environ.get("API_BASE_URL") or "https://router.huggingface.co/v1"
+# Configuration - EXACTLY as validator specifies
+# Must use os.environ direct access to ensure validator's injected vars are used
+try:
+    API_KEY = os.environ["API_KEY"]
+    API_BASE_URL = os.environ["API_BASE_URL"]
+except KeyError as e:
+    # Fallback only if BOTH are missing - indicates local testing
+    API_KEY = os.environ.get("HF_TOKEN") or os.environ.get("OPENAI_API_KEY")
+    API_BASE_URL = "https://router.huggingface.co/v1"
+    if not API_KEY:
+        raise ValueError(f"Missing {e} - validator must inject API_KEY and API_BASE_URL")
+
 MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 TEMPERATURE = 0.3
 MAX_COMPLETION_TOKENS = 800
@@ -164,12 +171,11 @@ def get_llm_action(
         )
         return parse_action_json((resp.choices[0].message.content or "").strip())
     except Exception as exc:
-        return {
-            "action_type": "task_assignment",
-            "task_id": task_id,
-            "developer_id": "unknown",
-            "error": str(exc),
-        }
+        # Log the error clearly - don't swallow API failures silently
+        error_msg = f"API call failed: {type(exc).__name__}: {str(exc)[:100]}"
+        print(f"[ERROR] {error_msg}", flush=True)
+        # Re-raise so caller knows API failed
+        raise
 
 
 # Task runner
@@ -199,14 +205,13 @@ def run_task(task_id: str, client: OpenAI) -> float:
             obs_str = str(obs)[:500]
 
             try:
+                # This call MUST succeed with actual API request
                 action_dict = get_llm_action(client, task_id, team_info, obs_str, step, max_steps, history)
             except Exception as e:
-                print(f"[DEBUG] LLM error: {e}", flush=True)
-                action_dict = {
-                    "action_type": "task_assignment",
-                    "task_id": task_id,
-                    "developer_id": "unknown",
-                }
+                # API failure = task failure (don't silently continue)
+                print(f"[ERROR] Task {task_id} failed at step {step}: {e}", flush=True)
+                log_step(step=step, action="api_error", reward=0.0, done=True, error=str(e))
+                raise  # Re-raise to mark task as failed
 
             action_type = action_dict.get("action_type", "unknown")
             task_item_id = action_dict.get("task_id")
