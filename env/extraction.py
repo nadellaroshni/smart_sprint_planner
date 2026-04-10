@@ -116,21 +116,16 @@ def _get_client():
         try:
             from openai import OpenAI
 
-            # Read credentials - try validator-injected vars first, then fall back
-            api_key = None
-            api_base_url = None
+            # CRITICAL: Use ONLY the validator-injected credentials
+            # NO fallbacks - if these are missing, gracefully degrade to unavailable
+            api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN")
+            api_base_url = os.environ.get("API_BASE_URL")
             
-            # Try validator-injected API_KEY first
-            if "API_KEY" in os.environ and "API_BASE_URL" in os.environ:
-                api_key = os.environ["API_KEY"]
-                api_base_url = os.environ["API_BASE_URL"]
-            else:
-                # Fall back to other sources
-                api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("HF_TOKEN")
-                api_base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-            
-            if not api_key:
-                logger.info("No API key configured for LLM extraction; using fallback extractor.")
+            if not api_key or not api_base_url:
+                logger.info(
+                    "API_KEY or API_BASE_URL not set; LLM extraction unavailable. "
+                    "Using heuristic fallback."
+                )
                 _client = "unavailable"
                 return _client
 

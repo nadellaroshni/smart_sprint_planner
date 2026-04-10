@@ -125,33 +125,31 @@ The required root-level baseline script is [inference.py](C:/Users/ASUS/Document
 It:
 
 - uses the OpenAI client for LLM calls
-- reads `API_BASE_URL`, `MODEL_NAME`, and `HF_TOKEN`
-- also supports `OPENAI_API_KEY` locally
-- falls back deterministically when no key is configured
+- reads `API_BASE_URL`, `MODEL_NAME`, and `API_KEY`
+- also accepts `HF_TOKEN` when `API_KEY` is not set
+- always sends LLM traffic through the configured `API_BASE_URL`
 - emits strict competition stdout lines:
   - `[START]`
   - `[STEP]`
   - `[END]`
 
-Run one task:
+Example:
 
 ```bash
-python inference.py medium
+API_BASE_URL=https://router.huggingface.co/v1 API_KEY=... python inference.py
 ```
 
 Run all tasks:
 
 ```bash
-python inference.py --all
+API_BASE_URL=https://router.huggingface.co/v1 API_KEY=... python inference.py
 ```
 
-Current local reproducible baseline from `python inference.py --all`:
+Expected submission behavior:
 
-- `easy`: `0.83`
-- `medium`: `0.73`
-- `hard`: `0.76`
-
-These are the submission-safe heuristic fallback scores in the current environment.
+- the script makes live proxy-backed LLM calls for all three tasks
+- task names emitted in logs are `easy`, `medium`, and `hard`
+- API failures are surfaced instead of being silently swallowed
 
 ## Learned Planner
 
@@ -231,7 +229,7 @@ pip install -r requirements.txt
 Run tests:
 
 ```bash
-pytest tests -v
+python -m pytest tests -v
 ```
 
 Run OpenEnv validation:
@@ -242,9 +240,9 @@ Run OpenEnv validation:
 
 Current local status:
 
-- `25` tests passing
-- `openenv validate` previously passing in the project environment
-- baseline inference reproducing all 3 tasks
+- the main automated tests live in `tests/`
+- `openenv validate` should be run from an environment with `openenv-core` installed
+- baseline inference is submission-oriented and requires proxy credentials
 
 ## Docker
 

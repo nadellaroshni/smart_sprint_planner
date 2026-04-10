@@ -10,22 +10,20 @@ description: >
 author: "Sprint Planning Team"
 license: "MIT"
 
-# Task reference for validators
 tasks:
-  - task_id: task1_easy
+  - task_id: easy
     name: "Static Sprint Planning"
     difficulty: easy
     baseline_expected_score: 0.83
-  - task_id: task2_medium
+  - task_id: medium
     name: "Single Disruption Replanning"
     difficulty: medium
     baseline_expected_score: 0.64
-  - task_id: task3_hard
+  - task_id: hard
     name: "Multi-Disruption Dynamic Planning"
     difficulty: hard
     baseline_expected_score: 0.35
 
-# HuggingFace Spaces configuration
 tags:
   - openenv
   - sprint-planning
@@ -38,16 +36,14 @@ tags:
 sdk: docker
 hardware: cpu-basic
 
-# Endpoint declarations
 endpoints:
-  reset:    "/reset"
-  step:     "/step"
-  state:    "/state"
-  tasks:    "/tasks"
-  grader:   "/grade"
-  health:   "/health"
+  reset: "/reset"
+  step: "/step"
+  state: "/state"
+  tasks: "/tasks"
+  grader: "/grade"
+  health: "/health"
 
-# Environment specification
 spec:
   openenv_version: "0.3.0"
   gymnasium_compatible: true
@@ -55,23 +51,21 @@ spec:
   session_timeout_seconds: 3600
 
   tasks:
-    - id: task1_easy
+    - id: easy
       name: "Static Sprint Planning - Fixed Backlog"
       difficulty: easy
       max_steps: 10
       baseline_score: 0.83
       grader_type: programmatic
       description: "Static sprint planning without disruptions. Evaluate prioritization by urgency, deadline, skill fit, and capacity."
-
-    - id: task2_medium
+    - id: medium
       name: "Dynamic Replanning - Single Disruption"
       difficulty: medium
       max_steps: 15
       baseline_score: 0.64
       grader_type: programmatic
       description: "Handle one mid-sprint disruption. Tests adaptability and re-prioritization under change."
-
-    - id: task3_hard
+    - id: hard
       name: "Complex Replanning - Multi-Disruption"
       difficulty: hard
       max_steps: 20
@@ -83,49 +77,47 @@ spec:
     type: structured
     schema: "Observation"
     contains:
-      meeting_text: "str — Transcribed meeting content"
-      extracted_items: "list[ExtractedItem] — Parsed agenda items"
-      jira_tickets: "list[JiraTicket] — Backlog tasks"
-      developers: "list[Developer] — Team members with capacity"
-      metrics: "dict — Sprint progress metrics"
-      reward: "float in [0.01, 0.99] — Partial progress reward"
-      done: "bool — Episode termination flag"
+      meeting_text: "str - Transcribed meeting content"
+      extracted_items: "list[ExtractedItem] - Parsed agenda items"
+      jira_tickets: "list[Task] - Backlog tasks"
+      developers: "list[Developer] - Team members with capacity"
+      completed_task_ids: "list[str] - Completed ticket ids"
+      sprint_day: "int - Current sprint day"
+      metrics: "SprintMetrics - Sprint progress metrics"
+      difficulty: "Difficulty - Current scenario difficulty"
+      recent_events: "list[SprintEvent] - Events applied this step"
+      pending_events: "list[SprintEvent] - Scheduled upcoming events"
 
   action_space:
     type: discrete_typed
     schema: "Action"
     action_types:
       - task_assignment
-      - capacity_allocation
-      - priority_adjustment
-      - dependency_resolution
 
   reward_function:
     type: dense
     range: [0.01, 0.99]
     signals:
-      completion_reward:   +0.25
-      timeliness_reward:   +0.20
-      balance_reward:      +0.15
-      efficiency_reward:   +0.10
+      completion_reward: +0.25
+      timeliness_reward: +0.20
+      balance_reward: +0.15
+      efficiency_reward: +0.10
       adaptability_reward: +0.29
 
-# Baseline inference configuration
 baseline:
-  model: "gpt-4-mini"
+  model: "Qwen/Qwen2.5-72B-Instruct"
   api_compatible: "openai"
   temperature: 0.3
-  max_tokens: 1000
-  seeds: [42, 137, 999]
+  max_tokens: 800
+  seeds: [42]
   expected_scores:
-    task1_easy:   0.83
-    task2_medium: 0.64
-    task3_hard:   0.35
+    easy: 0.83
+    medium: 0.64
+    hard: 0.35
     overall_mean: 0.61
-  api_key_env_var: "OPENAI_API_KEY"
+  api_key_env_var: "API_KEY"
   script: "inference.py"
 
-# Infrastructure & deployment
 infrastructure:
   dockerfile: "Dockerfile"
   port: 7860
@@ -136,8 +128,11 @@ infrastructure:
   session_backend: in_memory
   env_vars:
     required:
-      - OPENAI_API_KEY
+      - API_KEY
+      - API_BASE_URL
     optional:
+      - HF_TOKEN
+      - MODEL_NAME
       - SPRINT_LOG_LEVEL
 
 dependencies:

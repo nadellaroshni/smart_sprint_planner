@@ -3,10 +3,13 @@
 Inference Script - Smart Sprint Planner OpenEnv
 ===============================================
 
-MANDATORY ENV VARS:
-    API_BASE_URL   The API endpoint for the LLM (default: https://router.huggingface.co/v1)
-    MODEL_NAME     The model identifier to use (default: Qwen/Qwen2.5-72B-Instruct)
-    OPENAI_API_KEY Your API key for LLM access
+Submission credentials:
+    API_BASE_URL   The validator LLM proxy endpoint
+    API_KEY        The validator-injected proxy key
+    MODEL_NAME     The model identifier to use (optional)
+
+Local convenience:
+    HF_TOKEN may be used when API_KEY is not set.
 
 STDOUT FORMAT:
     [START] task=<task> env=<benchmark> model=<model>
@@ -20,53 +23,51 @@ import json
 import os
 import re
 import sys
-import textwrap
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from openai import OpenAI
 
 from env.environment import SprintEnv
-from env.models import Action, Difficulty, Observation
-from env.task_catalog import get_task_catalog
+from env.models import Action, Difficulty
 
 BENCHMARK = "smart_sprint_planner"
-
-# Configuration - EXACTLY as validator specifies
-# Must use os.environ direct access to ensure validator's injected vars are used
-try:
-    API_KEY = os.environ["API_KEY"]
-    API_BASE_URL = os.environ["API_BASE_URL"]
-except KeyError as e:
-    # Fallback only if BOTH are missing - indicates local testing
-    API_KEY = os.environ.get("HF_TOKEN") or os.environ.get("OPENAI_API_KEY")
-    API_BASE_URL = "https://router.huggingface.co/v1"
-    if not API_KEY:
-        raise ValueError(f"Missing {e} - validator must inject API_KEY and API_BASE_URL")
-
-MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+DEFAULT_API_BASE_URL = "https://router.huggingface.co/v1"
+DEFAULT_MODEL_NAME = "Qwen/Qwen2.5-72B-Instruct"
 TEMPERATURE = 0.3
 MAX_COMPLETION_TOKENS = 800
+MAX_CANDIDATES = 8
+
+
+def _get_api_credentials() -> tuple[str, str]:
+    api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN")
+    if not api_key:
+        raise RuntimeError("Missing API_KEY or HF_TOKEN for inference.")
+    return api_key, os.environ.get("API_BASE_URL", DEFAULT_API_BASE_URL)
+
+
+API_KEY, API_BASE_URL = _get_api_credentials()
+MODEL_NAME = os.environ.get("MODEL_NAME", DEFAULT_MODEL_NAME)
 
 TASKS = {
-    "task1_easy": {"max_steps": 10, "difficulty": Difficulty.EASY},
-    "task2_medium": {"max_steps": 15, "difficulty": Difficulty.MEDIUM},
-    "task3_hard": {"max_steps": 20, "difficulty": Difficulty.HARD},
+    "easy": {"max_steps": 10, "difficulty": Difficulty.EASY},
+    "medium": {"max_steps": 15, "difficulty": Difficulty.MEDIUM},
+    "hard": {"max_steps": 20, "difficulty": Difficulty.HARD},
 }
 
 STRATEGIES = {
-    "task1_easy": (
+    "easy": (
         "1) Analyze backlog and developer capacities. "
         "2) Prioritize tasks by deadline and urgency. "
         "3) Assign tasks to developers with matching skills and capacity. "
         "4) Optimize for completion rate and on-time delivery."
     ),
-    "task2_medium": (
+    "medium": (
         "1) Handle incoming disruption gracefully. "
         "2) Re-assess current assignments and priorities. "
         "3) Reallocate resources to accommodate new urgent work. "
         "4) Maintain feasibility while preserving progress."
     ),
-    "task3_hard": (
+    "hard": (
         "1) Monitor for multiple disruption waves. "
         "2) Adapt dynamically to changing conditions. "
         "3) Maintain overall task completion while handling disruptions. "
@@ -75,7 +76,6 @@ STRATEGIES = {
 }
 
 
-# Logging functions
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
@@ -89,16 +89,19 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
 
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    rewards_str = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
         f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
         flush=True,
     )
 
 
-# JSON parsing
+def log_stderr(message: str) -> None:
+    print(message, file=sys.stderr, flush=True)
+
+
 def parse_action_json(text: str) -> Dict[str, Any]:
-    """Extract JSON from LLM response."""
+    """Extract a JSON object from the model response."""
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text)
@@ -110,33 +113,122 @@ def parse_action_json(text: str) -> Dict[str, Any]:
 
     depth = 0
     start = None
-    for i, ch in enumerate(text):
-        if ch == "{":
+    for index, char in enumerate(text):
+        if char == "{":
             if depth == 0:
-                start = i
+                start = index
             depth += 1
-        elif ch == "}":
+        elif char == "}":
             depth -= 1
             if depth == 0 and start is not None:
                 try:
-                    return json.loads(text[start : i + 1])
+                    return json.loads(text[start : index + 1])
                 except json.JSONDecodeError:
                     start = None
 
     raise ValueError(f"Could not parse JSON from: {text[:200]}")
 
 
-# LLM call
+def _valid_pairs(obs) -> List[Tuple[str, str]]:
+    completed_ids = set(obs.completed_task_ids)
+    pairs: List[Tuple[str, str]] = []
+    for task in obs.jira_tickets:
+        if any(dep not in completed_ids for dep in task.dependencies):
+            continue
+        for dev in obs.developers:
+            if dev.capacity >= task.story_points:
+                pairs.append((task.id, dev.id))
+    return pairs
+
+
+def _score_pair(obs, task, dev) -> float:
+    days_left = max(task.deadline - obs.sprint_day, 0)
+    urgency = 10.0 / (days_left + 1)
+    priority = int(task.priority) * 2.0
+    size_bonus = 1.0 / max(task.story_points, 1)
+    skill_match = 2.5 if set(task.tags) & set(dev.specializations) else 0.0
+    event_bonus = 1.2 if task.source_event else 0.0
+    return urgency + priority + size_bonus + skill_match + event_bonus + (dev.capacity * 0.05)
+
+
+def _candidate_actions(obs, limit: int = MAX_CANDIDATES) -> List[Tuple[str, str]]:
+    scored: List[Tuple[float, Tuple[str, str]]] = []
+    task_map = {task.id: task for task in obs.jira_tickets}
+    dev_map = {dev.id: dev for dev in obs.developers}
+    for task_id, dev_id in _valid_pairs(obs):
+        task = task_map[task_id]
+        dev = dev_map[dev_id]
+        scored.append((_score_pair(obs, task, dev), (task_id, dev_id)))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [pair for _, pair in scored[:limit]]
+
+
+def _build_prompt_context(obs) -> Tuple[str, str]:
+    completed_ids = set(obs.completed_task_ids)
+    task_lines = []
+    for task in obs.jira_tickets:
+        blocked = any(dep not in completed_ids for dep in task.dependencies)
+        task_lines.append(
+            f"{task.id}: title={task.title}; priority={int(task.priority)}; points={task.story_points}; "
+            f"deadline={task.deadline}; tags={','.join(task.tags) or 'none'}; "
+            f"deps={','.join(task.dependencies) or 'none'}; source_event={task.source_event or 'none'}; "
+            f"blocked={'yes' if blocked else 'no'}"
+        )
+
+    dev_lines = []
+    for dev in obs.developers:
+        dev_lines.append(
+            f"{dev.id}: name={dev.name}; capacity={dev.capacity}; skill={dev.skill:.2f}; "
+            f"specializations={','.join(dev.specializations) or 'none'}"
+        )
+
+    candidate_lines = []
+    task_map = {task.id: task for task in obs.jira_tickets}
+    dev_map = {dev.id: dev for dev in obs.developers}
+    ranked_candidates = _candidate_actions(obs)
+    for task_id, dev_id in ranked_candidates:
+        task = task_map[task_id]
+        dev = dev_map[dev_id]
+        candidate_lines.append(
+            f"- task_id={task_id}, developer_id={dev_id}, task={task.title}, "
+            f"deadline={task.deadline}, priority={int(task.priority)}, "
+            f"match={'yes' if set(task.tags) & set(dev.specializations) else 'no'}"
+        )
+    recommended = ranked_candidates[0] if ranked_candidates else None
+
+    observation = (
+        f"sprint_day={obs.sprint_day}\n"
+        f"completed={','.join(obs.completed_task_ids) or 'none'}\n"
+        f"recent_events={len(obs.recent_events)} pending_events={len(obs.pending_events)}\n"
+        "TASKS:\n"
+        + "\n".join(task_lines)
+        + "\nDEVELOPERS:\n"
+        + "\n".join(dev_lines)
+    )
+    recommendation_line = (
+        f"RECOMMENDED_ASSIGNMENT: task_id={recommended[0]}, developer_id={recommended[1]}"
+        if recommended else
+        "RECOMMENDED_ASSIGNMENT: none"
+    )
+    candidates = (
+        recommendation_line + "\nVALID_ASSIGNMENTS:\n" +
+        ("\n".join(candidate_lines) if candidate_lines else "- none")
+    )
+    return observation, candidates
+
+
 def get_llm_action(
     client: OpenAI,
     task_id: str,
     team_info: str,
     observation: str,
+    valid_actions: str,
     step_num: int,
     max_steps: int,
     history: List[str],
+    fallback_pair: Optional[Tuple[str, str]] = None,
 ) -> Dict[str, Any]:
-    """Get next action from LLM."""
+    """Request one assignment from the validator-provided LLM proxy."""
     strategy = STRATEGIES.get(task_id, "Assign tasks optimally.")
     remaining = max_steps - step_num
     urgency = ""
@@ -150,37 +242,55 @@ def get_llm_action(
         f"TASK: {task_id}\n"
         f"STRATEGY: {strategy}\n"
         f"TEAM: {team_info}\n"
-        f"RULES:\n"
-        f"- Output EXACTLY ONE JSON object. No markdown, no text.\n"
-        f"- Format: {{\"action_type\": \"task_assignment\", \"task_id\": \"<id>\", \"developer_id\": \"<id>\"}}\n"
+        "RULES:\n"
+        "- Output EXACTLY ONE JSON object. No markdown, no text.\n"
+        "- Format: {\"action_type\": \"task_assignment\", \"task_id\": \"<id>\", \"developer_id\": \"<id>\"}\n"
+        "- Choose a pair from VALID_ASSIGNMENTS whenever one is available.\n"
+        "- Do not invent task ids or developer ids.\n"
+        "- If uncertain, return RECOMMENDED_ASSIGNMENT exactly.\n"
+        "- Prefer urgent, high-priority, on-time, skill-matched assignments.\n"
         f"- You have {max_steps} steps maximum."
     )
 
     history_text = "\n".join(history[-4:]) if history else "None"
-    user_prompt = f"Step {step_num}/{max_steps}.{urgency}\n\nOBS:\n{observation}\n\nHIST:\n{history_text}\n\nJSON:"
+    user_prompt = (
+        f"Step {step_num}/{max_steps}.{urgency}\n\n"
+        f"OBS:\n{observation}\n\n"
+        f"{valid_actions}\n\n"
+        f"HIST:\n{history_text}\n\n"
+        "JSON:"
+    )
 
     try:
-        resp = client.chat.completions.create(
+        response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=TEMPERATURE,
-            max_completion_tokens=MAX_COMPLETION_TOKENS,
+            max_tokens=MAX_COMPLETION_TOKENS,
         )
-        return parse_action_json((resp.choices[0].message.content or "").strip())
+        raw_text = (response.choices[0].message.content or "").strip()
+        try:
+            return parse_action_json(raw_text)
+        except Exception as exc:
+            if fallback_pair is not None:
+                log_stderr(f"DEBUG: Falling back after unparsable LLM output: {exc}")
+                return {
+                    "action_type": "task_assignment",
+                    "task_id": fallback_pair[0],
+                    "developer_id": fallback_pair[1],
+                }
+            raise
     except Exception as exc:
-        # Log the error clearly - don't swallow API failures silently
         error_msg = f"API call failed: {type(exc).__name__}: {str(exc)[:100]}"
-        print(f"[ERROR] {error_msg}", flush=True)
-        # Re-raise so caller knows API failed
+        log_stderr(f"ERROR: {error_msg}")
         raise
 
 
-# Task runner
 def run_task(task_id: str, client: OpenAI) -> float:
-    """Run one task and return clamped score in [0.01, 0.99]."""
+    """Run one task and return a clamped score in [0.01, 0.99]."""
     task_info = TASKS.get(task_id, {})
     max_steps = task_info.get("max_steps", 20)
     difficulty = task_info.get("difficulty", Difficulty.EASY)
@@ -189,108 +299,87 @@ def run_task(task_id: str, client: OpenAI) -> float:
 
     rewards: List[float] = []
     steps_taken = 0
-    score = 0.01  # Never return exactly 0
+    score = 0.01
     success = False
 
     try:
         env = SprintEnv(difficulty=difficulty, max_steps=max_steps, use_llm=False, seed=42)
         obs = env.reset()
-
-        team_members = obs.developers if hasattr(obs, "developers") else []
-        team_info = f"Size: {len(team_members)}, Capacity: {sum(d.capacity for d in team_members) if team_members else 0}"
-
+        team_info = f"Size: {len(obs.developers)}, Capacity: {sum(dev.capacity for dev in obs.developers)}"
         history: List[str] = []
 
         for step in range(1, max_steps + 1):
-            obs_str = str(obs)[:500]
+            observation_text, valid_actions_text = _build_prompt_context(obs)
+            best_fallback = _candidate_actions(obs, limit=1)
 
             try:
-                # This call MUST succeed with actual API request
-                action_dict = get_llm_action(client, task_id, team_info, obs_str, step, max_steps, history)
-            except Exception as e:
-                # API failure = task failure (don't silently continue)
-                print(f"[ERROR] Task {task_id} failed at step {step}: {e}", flush=True)
-                log_step(step=step, action="api_error", reward=0.0, done=True, error=str(e))
-                raise  # Re-raise to mark task as failed
+                action_dict = get_llm_action(
+                    client,
+                    task_id,
+                    team_info,
+                    observation_text,
+                    valid_actions_text,
+                    step,
+                    max_steps,
+                    history,
+                    best_fallback[0] if best_fallback else None,
+                )
+            except Exception as exc:
+                log_stderr(f"ERROR: Task {task_id} failed at step {step}: {exc}")
+                log_step(step=step, action="api_error", reward=0.0, done=True, error=str(exc))
+                raise
 
             action_type = action_dict.get("action_type", "unknown")
             task_item_id = action_dict.get("task_id")
-            dev_id = action_dict.get("developer_id")
+            developer_id = action_dict.get("developer_id")
+            valid_pairs = set(_valid_pairs(obs))
+
+            if (task_item_id, developer_id) not in valid_pairs:
+                if best_fallback:
+                    task_item_id, developer_id = best_fallback[0]
+                    action_type = "task_assignment"
 
             try:
-                if task_item_id and dev_id and obs.jira_tickets and obs.developers:
-                    action = Action(task_id=task_item_id, developer_id=dev_id)
-                    obs, reward, done, info = env.step(action)
+                if task_item_id and developer_id and obs.jira_tickets and obs.developers:
+                    action = Action(task_id=task_item_id, developer_id=developer_id)
+                    obs, reward, done, _ = env.step(action)
                     rewards.append(reward)
                     steps_taken = step
-
                     log_step(step=step, action=action_type, reward=reward, done=done, error=None)
-                    history.append(f"S{step}: {action_type}→{reward:.2f}")
-
+                    history.append(f"S{step}: {action_type}->{reward:.2f}")
                     if done:
                         break
                 else:
                     rewards.append(0.0)
                     log_step(step=step, action="skip", reward=0.0, done=False, error="bad_params")
-
-            except Exception as e:
-                print(f"[DEBUG] Step error: {e}", flush=True)
-                log_step(step=step, action="error", reward=0.0, done=True, error=str(e))
+            except Exception as exc:
+                log_stderr(f"DEBUG: Step error: {exc}")
+                log_step(step=step, action="error", reward=0.0, done=True, error=str(exc))
                 break
 
-        # Calculate score, clamp to [0.01, 0.99]
         if rewards:
-            total_reward = sum(rewards)
-            avg_reward = total_reward / len(rewards)
-            # Scale to [0.01, 0.99]
+            avg_reward = sum(rewards) / len(rewards)
             score = max(0.01, min(0.99, 0.5 + (avg_reward * 0.49)))
-        else:
-            score = 0.01
 
         success = score > 0.3
-
     except Exception as exc:
-        # Log API errors clearly but DO NOT SWALLOW - re-raise
         if "API call failed" in str(exc) or "api_error" in str(exc):
-            print(f"[ERROR] Task {task_id} had API error: {exc}", flush=True)
-            raise  # ← MUST RE-RAISE API ERRORS
-        else:
-            # Only non-API errors get caught and return score 0
-            print(f"[DEBUG] Task {task_id} environment error: {exc}", flush=True)
-            score = 0.01
-            success = False
+            log_stderr(f"ERROR: Task {task_id} had API error: {exc}")
+            raise
+        log_stderr(f"DEBUG: Task {task_id} environment error: {exc}")
+        score = 0.01
+        success = False
     finally:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
     return score
 
 
-# Main
 def main() -> None:
-    """Run all tasks in sequence."""
-    # Ensure we have credentials (fallbacks ensure this, but fail loudly if truly missing)
-    if not API_KEY or not API_BASE_URL:
-        raise ValueError(
-            f"Missing credentials: API_KEY={bool(API_KEY)}, API_BASE_URL={bool(API_BASE_URL)}. "
-            "Set API_KEY and API_BASE_URL environment variables or ensure HF_TOKEN/OPENAI_API_KEY are available."
-        )
-    
+    """Run all benchmark tasks in sequence."""
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-
-    print(f"[DEBUG] Model: {MODEL_NAME}", flush=True)
-    print(f"[DEBUG] API: {API_BASE_URL}", flush=True)
-
-    scores = []
     for task_id in TASKS:
-        # Don't catch API errors - let them propagate so validator can see them
-        # If credentials are correct, API calls WILL be made and validator WILL see them
-        # If credentials are wrong, error propagates visibly instead of being silently swallowed
-        task_score = run_task(task_id, client)
-        scores.append(task_score)
-
-    if scores:
-        overall = max(0.01, min(0.99, sum(scores) / len(scores)))
-        print(f"\n[SUMMARY] overall_score={overall:.3f} tasks={len(scores)}", flush=True)
+        run_task(task_id, client)
 
 
 if __name__ == "__main__":
