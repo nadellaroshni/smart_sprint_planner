@@ -1,11 +1,10 @@
 name: smart_sprint_planner
-version: "1.0.0"
-display_name: "Smart Sprint Planner - Agile Task Scheduling"
+version: "1.1.0"
+display_name: "Smart Sprint Planner"
 description: >
-  A high-fidelity environment for training and evaluating AI agents on real-world
-  sprint planning and dynamic re-planning tasks. Agents must assign work across a team
-  while handling changing capacity, injected disruptions, and shifting priorities.
-  Built on realistic sprint planning scenarios with multi-task complexity progression.
+  A real-world OpenEnv environment for agile sprint planning and dynamic replanning.
+  Agents convert planning context into practical task assignments across a software team,
+  balancing deadlines, skill fit, capacity, dependencies, and mid-sprint disruptions.
 
 author: "Sprint Planning Team"
 license: "MIT"
@@ -14,27 +13,28 @@ tasks:
   - task_id: easy
     name: "Static Sprint Planning"
     difficulty: easy
-    baseline_expected_score: 0.83
+    baseline_expected_score: 0.833
   - task_id: medium
     name: "Single Disruption Replanning"
     difficulty: medium
-    baseline_expected_score: 0.64
+    baseline_expected_score: 0.734
   - task_id: hard
     name: "Multi-Disruption Dynamic Planning"
     difficulty: hard
-    baseline_expected_score: 0.35
+    baseline_expected_score: 0.761
 
 tags:
   - openenv
+  - agile
   - sprint-planning
   - scheduling
-  - rl-environment
-  - agile
   - task-assignment
   - dynamic-replanning
+  - rl-environment
 
 sdk: docker
 hardware: cpu-basic
+base_image: "ghcr.io/meta-pytorch/openenv-base:latest"
 
 endpoints:
   reset: "/reset"
@@ -52,41 +52,38 @@ spec:
 
   tasks:
     - id: easy
-      name: "Static Sprint Planning - Fixed Backlog"
+      name: "Static Sprint Planning"
       difficulty: easy
       max_steps: 10
-      baseline_score: 0.83
+      baseline_score: 0.833
       grader_type: programmatic
-      description: "Static sprint planning without disruptions. Evaluate prioritization by urgency, deadline, skill fit, and capacity."
     - id: medium
-      name: "Dynamic Replanning - Single Disruption"
+      name: "Single Disruption Replanning"
       difficulty: medium
       max_steps: 15
-      baseline_score: 0.64
+      baseline_score: 0.734
       grader_type: programmatic
-      description: "Handle one mid-sprint disruption. Tests adaptability and re-prioritization under change."
     - id: hard
-      name: "Complex Replanning - Multi-Disruption"
+      name: "Multi-Disruption Dynamic Planning"
       difficulty: hard
       max_steps: 20
-      baseline_score: 0.35
+      baseline_score: 0.761
       grader_type: programmatic
-      description: "Handle 3+ disruptions over time. Frontier task for sophisticated re-planning under volatility."
 
   observation_space:
     type: structured
     schema: "Observation"
     contains:
-      meeting_text: "str - Transcribed meeting content"
-      extracted_items: "list[ExtractedItem] - Parsed agenda items"
-      jira_tickets: "list[Task] - Backlog tasks"
-      developers: "list[Developer] - Team members with capacity"
-      completed_task_ids: "list[str] - Completed ticket ids"
-      sprint_day: "int - Current sprint day"
-      metrics: "SprintMetrics - Sprint progress metrics"
-      difficulty: "Difficulty - Current scenario difficulty"
-      recent_events: "list[SprintEvent] - Events applied this step"
-      pending_events: "list[SprintEvent] - Scheduled upcoming events"
+      meeting_text: "str - planning transcript or transcribed meeting audio"
+      extracted_items: "list[ExtractedItem] - structured planning items extracted from the meeting"
+      jira_tickets: "list[Task] - active sprint backlog tickets"
+      developers: "list[Developer] - available engineers with capacity and specialties"
+      completed_task_ids: "list[str] - completed ticket ids"
+      sprint_day: "int - current day within the simulated sprint"
+      metrics: "SprintMetrics - reward and disruption statistics"
+      difficulty: "Difficulty - active task difficulty"
+      recent_events: "list[SprintEvent] - disruption events applied this step"
+      pending_events: "list[SprintEvent] - scheduled future disruptions"
 
   action_space:
     type: discrete_typed
@@ -96,31 +93,44 @@ spec:
 
   reward_function:
     type: dense
-    range: [0.01, 0.99]
+    range: [-0.5, 2.5]
     signals:
-      completion_reward: +0.25
-      timeliness_reward: +0.20
-      balance_reward: +0.15
-      efficiency_reward: +0.10
-      adaptability_reward: +0.29
+      on_time_completion: +0.50
+      skill_match: +0.20
+      high_priority: +0.10
+      disruption_adaptation: +0.25
+      invalid_assignment: -0.10
+      blocked_assignment: -0.40
+      over_capacity_assignment: -0.20
+
+data:
+  scenario_sources:
+    - dataset.json
+    - dataset_hard_extra.json
+    - dataset_hard_extra2.json
+    - built_in_fallbacks
+  synthetic_data: true
+  realism: high
 
 baseline:
   model: "Qwen/Qwen2.5-72B-Instruct"
   api_compatible: "openai"
-  temperature: 0.3
-  max_tokens: 800
+  temperature: 0.1
+  max_tokens: 500
   seeds: [42]
   expected_scores:
-    easy: 0.83
-    medium: 0.64
-    hard: 0.35
-    overall_mean: 0.61
-  api_key_env_var: "API_KEY"
+    easy: 0.833
+    medium: 0.734
+    hard: 0.761
+    overall_mean: 0.776
+  api_key_env_var: "HF_TOKEN"
   script: "inference.py"
 
 infrastructure:
   dockerfile: "Dockerfile"
   port: 7860
+  build_command: "docker build -t smart-sprint-planner ."
+  run_command: "docker run -p 7860:7860 smart-sprint-planner"
   framework: fastapi
   server: uvicorn
   workers: 1
@@ -128,12 +138,11 @@ infrastructure:
   session_backend: in_memory
   env_vars:
     required:
-      - API_KEY
       - API_BASE_URL
-    optional:
-      - HF_TOKEN
       - MODEL_NAME
-      - SPRINT_LOG_LEVEL
+      - HF_TOKEN
+    optional:
+      - API_KEY
 
 dependencies:
   - fastapi
