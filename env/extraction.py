@@ -118,7 +118,7 @@ def _get_client():
 
             # CRITICAL: Use ONLY the validator-injected credentials
             # NO fallbacks - if these are missing, gracefully degrade to unavailable
-            api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN")
+            api_key = os.environ.get("HF_TOKEN") or os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
             api_base_url = os.environ.get("API_BASE_URL")
             
             if not api_key or not api_base_url:
@@ -150,7 +150,7 @@ def _call_llm(transcript: str) -> List[dict]:
     if client == "unavailable":
         raise RuntimeError("LLM client not available")
 
-    model = os.getenv("MODEL_NAME", "gpt-4o-mini")
+    model = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
     if hasattr(client, "responses"):
         response = client.responses.create(

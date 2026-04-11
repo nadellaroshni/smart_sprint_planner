@@ -7,9 +7,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
-from agent.dqn_agent import DDQNAgent
 from agent.heuristic_agent import HeuristicAgent
 from env.environment import SprintEnv
 from env.graders import grade
@@ -21,6 +20,9 @@ from env.models import (
     PlanResponse,
 )
 
+if TYPE_CHECKING:
+    from agent.dqn_agent import DDQNAgent
+
 
 def _load_agent(strategy: str, checkpoint: Optional[str]) -> Tuple[object, str]:
     normalized = strategy.lower()
@@ -30,16 +32,21 @@ def _load_agent(strategy: str, checkpoint: Optional[str]) -> Tuple[object, str]:
     if normalized == "ddqn":
         ckpt = checkpoint or "checkpoints/best"
         if (Path(ckpt) / "online.pkl").exists():
-            agent = DDQNAgent()
-            agent.load(ckpt)
-            return agent, "ddqn"
+            try:
+                from agent.dqn_agent import DDQNAgent
+            except ImportError:
+                normalized = "heuristic"
+            else:
+                agent = DDQNAgent()
+                agent.load(ckpt)
+                return agent, "ddqn"
         normalized = "heuristic"
 
     return HeuristicAgent(), normalized
 
 
 def _choose_action(agent: object, obs: Observation) -> Optional[Action]:
-    if isinstance(agent, DDQNAgent):
+    if agent.__class__.__name__ == "DDQNAgent":
         return agent.act(obs, deterministic=True)
     if isinstance(agent, HeuristicAgent):
         return agent.act(obs)
