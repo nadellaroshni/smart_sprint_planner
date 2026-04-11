@@ -210,5 +210,5 @@ class TaskDescriptor(BaseModel):
     difficulty: Difficulty
     objective: str
     grader: str
-    score_range: str = "[0.0, 1.0]"
+    score_range: str = "(0.0, 1.0)"
     deterministic: bool = True

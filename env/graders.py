@@ -11,6 +11,12 @@ import logging
 from typing import Any, Dict, Tuple
 
 logger = logging.getLogger(__name__)
+MIN_OPEN_SCORE = 0.001
+MAX_OPEN_SCORE = 0.999
+
+
+def _clamp_open_score(score: float) -> float:
+    return max(MIN_OPEN_SCORE, min(MAX_OPEN_SCORE, score))
 
 
 def compute_step_reward(
@@ -181,6 +187,8 @@ def grade(env) -> Dict[str, Any]:
         "final_score": round(score, 3),
     }
 
+    score = _clamp_open_score(score)
+    breakdown["final_score"] = round(score, 3)
     summary = (
         f"Score: {score:.2f} | Completed {len(completed)}/{total_tasks} tasks | "
         f"On-time: {on_time_rate:.0%} | Adaptability: {adaptability:.2f}"
@@ -255,6 +263,8 @@ def grade_easy(env) -> Dict[str, Any]:
         "final_score": round(score, 3),
     }
 
+    score = _clamp_open_score(score)
+    breakdown["final_score"] = round(score, 3)
     summary = (
         f"Easy Score: {score:.2f} | Completed {len(completed)}/{total_tasks} | "
         f"On-time: {on_time_rate:.0%}"
@@ -331,6 +341,8 @@ def grade_medium(env) -> Dict[str, Any]:
         "final_score": round(score, 3),
     }
 
+    score = _clamp_open_score(score)
+    breakdown["final_score"] = round(score, 3)
     summary = (
         f"Medium Score: {score:.2f} | Completed {len(completed)}/{total_tasks} | "
         f"Adaptability: {adaptability:.2f}"
@@ -413,6 +425,8 @@ def grade_hard(env) -> Dict[str, Any]:
         "final_score": round(score, 3),
     }
 
+    score = _clamp_open_score(score)
+    breakdown["final_score"] = round(score, 3)
     summary = (
         f"Hard Score: {score:.2f} | Completed {len(completed)}/{total_tasks} | "
         f"Adaptability: {adaptability:.2f}"

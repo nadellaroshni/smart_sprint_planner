@@ -36,6 +36,8 @@ TEMPERATURE = 0.1
 MAX_COMPLETION_TOKENS = 500
 SUCCESS_SCORE_THRESHOLD = 0.3
 MAX_CANDIDATES = 6
+MIN_OPEN_SCORE = 0.001
+MAX_OPEN_SCORE = 0.999
 
 TASKS = {
     "easy": {"max_steps": 10, "difficulty": Difficulty.EASY},
@@ -86,7 +88,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
         flush=True,
     )
 
@@ -275,6 +277,10 @@ def format_action_str(task_id: Optional[str], developer_id: Optional[str]) -> st
     return "skip"
 
 
+def clamp_open_score(score: float) -> float:
+    return max(MIN_OPEN_SCORE, min(MAX_OPEN_SCORE, score))
+
+
 def run_task(task_id: str, client: OpenAI) -> float:
     max_steps = TASKS[task_id]["max_steps"]
     difficulty = TASKS[task_id]["difficulty"]
@@ -339,7 +345,9 @@ def run_task(task_id: str, client: OpenAI) -> float:
 
         if rewards:
             avg_reward = sum(rewards) / len(rewards)
-            score = max(0.0, min(1.0, 0.5 + (avg_reward * 0.49)))
+            score = clamp_open_score(0.5 + (avg_reward * 0.49))
+        else:
+            score = MIN_OPEN_SCORE
         success = score >= SUCCESS_SCORE_THRESHOLD
     finally:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
